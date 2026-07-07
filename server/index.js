@@ -2,7 +2,8 @@ const express= require('express');
 const app=express();
 const mongoose=require('mongoose');
 const dotenv=require('dotenv');
-dotenv.config();
+const path=require('path');
+dotenv.config({ path: path.join(__dirname, ".env") });
 const authRoute=require('./routes').auth;
 const productRoute=require('./routes').product;
 const passport=require('passport');
@@ -26,7 +27,7 @@ app.use(cors());
 
 app.use('/api/user',authRoute);
 
-
+app.use('/uploads', express.static('uploads'));
 app.use(
     '/api/product'/*,
     passport.authenticate('jwt', { session: false })*/

@@ -8,10 +8,15 @@ const PostProductComponent = (props) => {
   let [description, setDescription] = useState("");
   let [price, setPrice] = useState(0);
   let [message, setMessage] = useState("");
+  let [type, setType] = useState("");
+  let [image, setImage] = useState("");
   const navigate = useNavigate();
   const handleTakeToLogin = () => {
     navigate("/login");
   };
+  const handleChangeImage = (e) => {
+  setImage(e.target.files[0]);
+};
   const handleChangeTitle = (e) => {
     setTitle(e.target.value);
   };
@@ -21,8 +26,11 @@ const PostProductComponent = (props) => {
   const handleChangePrice = (e) => {
     setPrice(e.target.value);
   };
+  const handleChangeType = (e) => {
+    setType(e.target.value);
+  };
   const postProduct = () => {
-    ProductService.post(title, description, price)
+    ProductService.post(title, description, price,type,image)
       .then(() => {
         window.alert("新商品已發布成功");
         navigate("/myProduct");
@@ -45,12 +53,7 @@ const PostProductComponent = (props) => {
             帶我進入登錄頁面。
           </button>
         </div>
-      )}
-      {/* {currentUser && currentUser.user.role !== "seller" && (
-        <div>
-          <p>只有賣家可以發布新商品。</p>
-        </div>
-      )} */}
+      )}      
       {currentUser && currentUser.user.role == "seller" && (
         <div className="form-group">
           <label for="exampleforTitle">商品標題：</label>
@@ -78,6 +81,25 @@ const PostProductComponent = (props) => {
             className="form-control"
             id="exampleforPrice"
             onChange={handleChangePrice}
+          />
+          <br />
+          <label for="exampleforType">分類：</label>
+          <input
+            name="type"
+            type="text"
+            className="form-control"
+            id="exampleforType"
+            onChange={handleChangeType}
+          />
+          <br />
+          <label htmlFor="exampleforImage">商品圖片：</label>
+          <input
+            name="image"
+            type="file"
+            className="form-control"
+            id="exampleforImage"
+            accept="image/*"
+            onChange={handleChangeImage}
           />
           <br />
           <button className="btn btn-primary" onClick={postProduct}>

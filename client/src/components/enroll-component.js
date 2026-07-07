@@ -1,151 +1,222 @@
-import React ,{useEffect,useState} from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useCallback, useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import ProductService from "../services/product.service";
+import { UPLOADS_URL } from "../services/product.service";
 
-const EnrollComponent = ({currentUser,setCurrentUser}) => {
-    const navigate=useNavigate();
-    let [searchInput,setSearchInput]=useState('')
-    let [searchResult,setSearchResult]=useState(null)
-    const [quantities, setQuantities] = useState({});
+const EnrollComponent = ({ currentUser }) => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const selectedType = searchParams.get("type");
+  const [menuProducts, setMenuProducts] = useState([]);
+  const [searchResult, setSearchResult] = useState(null);
+  const [searchInput, setSearchInput] = useState("");
+  const [quantities, setQuantities] = useState({});
 
-    // let [countInput,setCountInput]=useState('')
-    // let [countResult,setCountResult]=useState(null)
-    const handleTakeToLogin = () => {
-        navigate('/login');
+  const filterProducts = useCallback((products, keyword = "") => {
+    let result = products;
+    const trimmedKeyword = keyword.trim().toLowerCase();
+
+    if (selectedType) {
+      result = result.filter(
+        (product) => (product.type || "").trim() === selectedType
+      );
     }
 
-    const handleChangeInput =(e) =>{
-        setSearchInput(e.target.value)
+    if (trimmedKeyword) {
+      result = result.filter((product) =>
+        (product.title || "").toLowerCase().includes(trimmedKeyword)
+      );
     }
 
-    // const handleQuantityChange = (e, productId) => {
-    //     setQuantities({
-    //         ...quantities,
-    //         [productId]: e.target.value,
-    //     });
-    //     };
+    return result;
+  }, [selectedType]);
 
-
-    const handleSearch =  () => {         
-        ProductService.getProductByName(searchInput).then((data)=>{
-            setSearchResult(data.data)
-        }).catch(e=>{
-            console.log(e)
-        })
+  useEffect(() => {
+    if (!currentUser) {
+      setMenuProducts([]);
+      setSearchResult(null);
+      return;
     }
 
-    const handleEnroll = (e) => {
-        if (!currentUser) {
-            window.alert("請先登入才能購買商品");
-            navigate("/login");
-            return;
-        }
+    ProductService.getMenuProducts(currentUser)
+      .then((data) => {
+        const products = data.data || [];
+        setMenuProducts(products);
+        setSearchResult(filterProducts(products, searchInput));
+      })
+      .catch((e) => {
+        console.log(e);
+      });
+  }, [currentUser, filterProducts, searchInput]);
 
-        // const quantity = parseInt(quantities[productId]) || 1;
-        ProductService.enroll(e.target.id/*productId, quantity*/).then(()=>{
-            window.alert("您已成功購買")
-            navigate("/product")
-        }).catch(e=>{
-            console.log(e)
-        })
+  const handleChangeInput = (e) => {
+    setSearchInput(e.target.value);
+  };
+
+  const handleQuantityChange = (e, productId) => {
+    const value = Math.max(1, Number(e.target.value) || 1);
+    setQuantities((prev) => ({
+      ...prev,
+      [productId]: value,
+    }));
+  };
+
+  const handleSearch = () => {
+    const keyword = searchInput.trim();
+
+    if (!keyword) {
+      setSearchResult(filterProducts(menuProducts));
+      return;
     }
 
-    return (<div style={{padding:"3rem"}}>
-        {/* {!currentUser && (
-            <div>
-                <p>您必須先登入</p>
-                <button 
-                className="btn btn-primary btn-lg"
-                onClick={handleTakeToLogin}>回到登入頁面</button>
-            </div>
-        )}    */}
-        
-        {/* {currentUser && currentUser.user.role =="seller" && (
-        <div>
-            <h1>只有買家才能購買商品</h1>
-        </div>
-        )} */}
+    setSearchResult(filterProducts(menuProducts, keyword));
+  };
 
-        {/* {currentUser && currentUser.user.role =="buyer" && (
-        <div className="search input-group mb-3">
-            <input 
-            type="text" 
-            className="form-control"
-            onChange={handleChangeInput}
-            />
-            <button onClick={handleSearch} className="btn btn-primary">搜尋商品</button>
-        </div>
-        )} */}
+  const handleEnroll = (productId) => {
+    if (!currentUser) {
+      window.alert("請先登入才能加入清單");
+      navigate("/login");
+      return;
+    }
 
-        <div className="search input-group mb-3">
-            <input 
-            type="text" 
-            className="form-control"
-            onChange={handleChangeInput}
-            />
-            <button onClick={handleSearch} className="btn btn-primary">搜尋商品</button>
-        </div>
-        
-        {
-            /*currentUser && */searchResult && searchResult.length != 0 && <div>
-                {/* <p>返回數據</p> */}
-                    {searchResult.map((product)=>{
-                        return (<div 
-                        key={product._id} 
-                        className="card" 
-                        style={{width: "18rem"}}
+    const quantity = Number(quantities[productId]) || 1;
+
+    ProductService.enroll(productId, quantity)
+      .then(() => {
+        window.alert("您已加入清單");
+        navigate("/product");
+      })
+      .catch((e) => {
+        console.log(e);
+      });
+  };
+
+  if (!currentUser) {
+    return (
+      <main className="landing-page">
+        <section className="landing-panel">
+          <h1 className="landing-title">點餐網站</h1>
+          <div className="landing-card">
+            <button
+              type="button"
+              className="landing-button landing-button-primary"
+              onClick={() => navigate("/register")}
+            >
+              註冊
+            </button>
+            <button
+              type="button"
+              className="landing-button landing-button-secondary"
+              onClick={() => navigate("/login")}
+            >
+              登入
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <div className="product-page">
+      <div className="search input-group mb-3" style={{ maxWidth: "60rem", margin: "0 auto" }}>
+        <input type="text" className="form-control" onChange={handleChangeInput} />
+        <button onClick={handleSearch} className="btn btn-primary" style={{ minWidth: "8rem" }}>
+          搜尋餐點
+        </button>
+      </div>
+
+      {searchResult && (
+        <div style={{ display: "flex", flexWrap: "wrap" }}>
+          {searchResult.map((product) => (
+            <div
+              key={product._id}
+              className="card product-card"
+              style={{ width: "80rem", margin: "0 auto", marginTop: "1rem" }}
+            >
+              <div className="card-body">
+                <div
+                  className="product-card-layout"
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "stretch",
+                    gap: "1.5rem",
+                  }}
+                >
+                  <div
+                    className="product-info-column"
+                    style={{
+                      width: "22rem",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <p className="card-text" style={{ marginBottom: "1rem" }}>
+                      餐點名稱: {product.title}
+                    </p>
+
+                    <p className="card-text" style={{ marginBottom: "1rem" }}>
+                      餐點價格: {product.price}
+                    </p>
+
+                    <div>
+                      <div className="input-group" style={{ maxWidth: "18rem" }}>
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder="購買數量"
+                          value={quantities[product._id] || ""}
+                          onChange={(e) => handleQuantityChange(e, product._id)}
+                          className="form-control"
+                        />
+                        <button
+                          className="btn btn-warning"
+                          onClick={() => handleEnroll(product._id)}
+                          style={{ minWidth: "8rem" }}
                         >
+                          加入清單
+                        </button>
+                      </div>
+                    </div>
+                  </div>
 
-                       
-                        <div className="card-body">
-                             <h5 className="card-title">商品名稱:{product.title}</h5>
-                    <p style={{margin:"0.5rem 0rem"}} className ="card-text">
-                        {product.description}
+                  <div
+                    className="product-description-column"
+                    style={{
+                      flex: 1,
+                      display: "flex",
+                    }}
+                  >
+                    <p className="card-text" style={{ margin: 0 }}>
+                      餐點描述: {product.description}
                     </p>
-                    <p style={{margin:"0.5rem 0rem"}}>
-                        購買次數:{product.buyer.length}
-                        {/* 購買數量: {
-    product.buyer.reduce((total, b) => total + b.quantity, 0)
-  } */}
-                    </p>
-                    <p style={{margin:"0.5rem 0rem"}}>
-                        商品價格:{product.price}
-                    </p>
-                    <p style={{margin:"0.5rem 0rem"}}>
-                        賣家:{product.seller.username}
-                    </p>
-{/* 
-                    <input
-                        type="number"
-                        min="1"
-                        placeholder="購買數量"
-                        value={quantities[product._id] || ""}
-                        onChange={(e) => handleQuantityChange(e, product._id)}
-                        className="form-control mb-2"
-                    /> */}
+                  </div>
 
-                    <a href="#" 
-                    id={product._id} 
-                    className="card-text btn btn-primary"
-                    onClick={handleEnroll}
-                    // onClick={() => handleEnroll(product._id)}
-                    >
-                        購買商品
-                    </a>
-                        </div>
-                         </div>)
-
-                    })
-                    }
+                  <div className="product-image-wrap" style={{ width: "20rem", flexShrink: 0 }}>
+                    {product.image && (
+                      <img
+                        className="product-image"
+                        src={`${UPLOADS_URL}/${product.image}`}
+                        alt={product.title}
+                        style={{
+                          width: "100%",
+                          height: "10rem",
+                          objectFit: "cover",
+                          borderRadius: "0.5rem",
+                        }}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
-        }
-
-
-
-
+          ))}
         </div>
-    )
-    
-}
+      )}
+    </div>
+  );
+};
 
-export default EnrollComponent
+export default EnrollComponent;

@@ -17,10 +17,10 @@ const LoginComponent = ({currentUser,setCurrentUser}) => {
   const handleLogin = async() => {
     try{
         let response =await AuthService.login(email,password);
-        localStorage.setItem("user",JSON.stringify(response.data));
+        AuthService.setLocalUser(response.data);
         window.alert("您已成功登入");
-        setCurrentUser(AuthService.getCurrentUser());
-        navigate("/");
+        setCurrentUser(response.data);
+        navigate("/myProduct");
     } catch(e) {
       setMessage(e.response.data);
     }    
@@ -50,9 +50,13 @@ const LoginComponent = ({currentUser,setCurrentUser}) => {
           />
         </div>
         <br />
-        <div className="form-group">
-          <button onClick={handleLogin} className="btn btn-primary btn-block">
-            <span>登入系統</span>
+        <div className="form-group text-center">
+          <button
+            onClick={handleLogin}
+            className="btn btn-primary"
+            style={{ minWidth: "8rem" }}
+          >
+            <span>登入</span>
           </button>
         </div>
       </div>

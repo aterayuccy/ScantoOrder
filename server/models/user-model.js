@@ -24,10 +24,19 @@ const userSchema=new Schema({
         enum:["buyer","seller"],
         required:true
     },
-    date:{
-        type:Date,
-        default:Date.now
-    }
+    tableNumber: {
+        type: Number,
+        default: null
+    },
+    qrSeller: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        default: null
+    },
+    // date:{
+    //     type:Date,
+    //     default:Date.now
+    // }
 })
 
 

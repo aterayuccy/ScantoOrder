@@ -4,7 +4,9 @@ import Nav from "./nav-component";
 const Layout = ({currentUser,setCurrentUser}) => {
   return (
     <>
-      <Nav currentUser ={currentUser} setCurrentUser={setCurrentUser}/>
+      {currentUser && (
+        <Nav currentUser ={currentUser} setCurrentUser={setCurrentUser}/>
+      )}
       <Outlet />
     </>
   );

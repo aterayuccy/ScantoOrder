@@ -2,12 +2,12 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthService from "../services/auth.service";
 
-const RegisterComponent = () => {
+const RegisterComponent = ({setCurrentUser}) => {
   const navigate = useNavigate();
   let [username,setUsername] = useState("");
   let [email,setEmail] = useState("");
   let [password,setPassword] = useState("");
-  let [role,setRole] = useState("buyer");
+  let [role] = useState("seller");
   let [message,setMessage] = useState("");
 
   const handleUsername = (e) => {
@@ -19,10 +19,12 @@ const RegisterComponent = () => {
   const handlePassword = (e) => {
     setPassword(e.target.value);
   }
-  const handleRole = (e) => {
-    setRole(e.target.value);
-  }
   const handleRegister = (e) => {
+    AuthService.clearQrUser();
+    if (setCurrentUser) {
+      setCurrentUser(AuthService.getCurrentUser());
+    }
+
     AuthService.register(username,email,password,role).then(() => {
       window.alert("您已成功註冊"); 
       navigate("/login");
@@ -65,18 +67,7 @@ const RegisterComponent = () => {
             name="password"
             placeholder="長度至少超過6個英文或數字"
           />
-        </div>
-        {/* <br />
-        <div className="form-group">
-          <label htmlFor="password">身份：</label>
-          <input
-            onChange={handleRole}
-            type="text"
-            className="form-control"
-            placeholder="只能填入buyer或是seller這兩個選項其一"
-            name="role"
-          />
-        </div> */}
+        </div>        
         <br />
         <button onClick={handleRegister} className="btn btn-primary">
           <span>註冊會員</span>

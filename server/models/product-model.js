@@ -9,7 +9,7 @@ const courseSchema=new Schema({
     },
     description:{
         type: String,
-        required: true
+        default: ""
     },
     price:{
         type:Number,
@@ -18,25 +18,23 @@ const courseSchema=new Schema({
     seller:{
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
+    },   
+    buyer: [
+    {
+        user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        quantity: { type: Number, default: 1 },
+        tableNumber: { type: Number, default: null },
+        submittedAt: { type: Date, default: null },
     },
-    // buyer: [
-    // {
-    //     user: {
-    //     type: [String],
-    //     default: []
-    //     },
-    //     quantity: {
-    //     type: Number,
-    //     required: true,
-    //     min: 1,
-    //     },
-    // }
-    // ]
-
-    buyer:{
-        type:[String],
-        default:[]
+    ],
+    type:{
+        type: String,
+        required: true
     },
+    image: {
+  type: String,
+  default: "",
+}
 });
 
 
