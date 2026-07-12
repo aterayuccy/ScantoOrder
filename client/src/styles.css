@@ -6,6 +6,88 @@ body {
   overflow-x: hidden;
 }
 
+.auth-entry-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  background:
+    linear-gradient(135deg, rgba(14, 165, 233, 0.12), transparent 34%),
+    linear-gradient(315deg, rgba(245, 158, 11, 0.14), transparent 32%),
+    #f7fafc;
+}
+
+.auth-entry-panel {
+  width: min(100%, 25rem);
+}
+
+.auth-entry-title {
+  margin: 0 0 1.5rem;
+  color: #111827;
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+  letter-spacing: 0;
+}
+
+.auth-entry-card {
+  padding: 1.5rem;
+  border: 1px solid #d7e0ea;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 1rem 2.5rem rgba(15, 23, 42, 0.12);
+}
+
+.auth-entry-heading {
+  margin: 0 0 1.25rem;
+  color: #111827;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  letter-spacing: 0;
+}
+
+.auth-entry-field {
+  display: block;
+  margin-bottom: 1rem;
+  color: #374151;
+  font-weight: 700;
+}
+
+.auth-entry-field span {
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.auth-entry-submit {
+  display: block;
+  width: 10rem;
+  max-width: 100%;
+  min-height: 2.75rem;
+  margin: 1.25rem auto 0;
+  font-weight: 700;
+}
+
+.auth-entry-switch {
+  margin: 1rem 0 0;
+  color: #6b7280;
+  text-align: center;
+}
+
+.auth-entry-switch a {
+  margin-left: 0.25rem;
+  color: #0f766e;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-entry-switch a:hover {
+  text-decoration: underline;
+}
+
 .landing-page {
   display: flex;
   align-items: center;
@@ -159,12 +241,31 @@ body {
 }
 
 .qr-code-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
   width: 15.75rem;
   padding: 0.75rem;
+}
+
+.qr-code-download {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  padding: 0;
+  color: #0d6efd;
+  font-size: 0.9rem;
+  line-height: 1.25;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.qr-code-download:hover,
+.qr-code-download:focus-visible {
+  text-decoration: underline;
 }
 
 .qr-code-title {
@@ -225,6 +326,18 @@ body {
   }
 
   .landing-card {
+    padding: 1.25rem;
+  }
+
+  .auth-entry-page {
+    padding: 1rem;
+  }
+
+  .auth-entry-title {
+    font-size: 2.35rem;
+  }
+
+  .auth-entry-card {
     padding: 1.25rem;
   }
 

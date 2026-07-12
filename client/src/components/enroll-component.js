@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import ProductService from "../services/product.service";
-import { UPLOADS_URL } from "../services/product.service";
+import AuthEntryComponent from "./auth-entry-component";
+import ProductService, { UPLOADS_URL } from "../services/product.service";
 
-const EnrollComponent = ({ currentUser }) => {
+const EnrollComponent = ({ currentUser, setCurrentUser }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const selectedType = searchParams.get("type");
@@ -12,24 +12,27 @@ const EnrollComponent = ({ currentUser }) => {
   const [searchInput, setSearchInput] = useState("");
   const [quantities, setQuantities] = useState({});
 
-  const filterProducts = useCallback((products, keyword = "") => {
-    let result = products;
-    const trimmedKeyword = keyword.trim().toLowerCase();
+  const filterProducts = useCallback(
+    (products, keyword = "") => {
+      let result = products;
+      const trimmedKeyword = keyword.trim().toLowerCase();
 
-    if (selectedType) {
-      result = result.filter(
-        (product) => (product.type || "").trim() === selectedType
-      );
-    }
+      if (selectedType) {
+        result = result.filter(
+          (product) => (product.type || "").trim() === selectedType
+        );
+      }
 
-    if (trimmedKeyword) {
-      result = result.filter((product) =>
-        (product.title || "").toLowerCase().includes(trimmedKeyword)
-      );
-    }
+      if (trimmedKeyword) {
+        result = result.filter((product) =>
+          (product.title || "").toLowerCase().includes(trimmedKeyword)
+        );
+      }
 
-    return result;
-  }, [selectedType]);
+      return result;
+    },
+    [selectedType]
+  );
 
   useEffect(() => {
     if (!currentUser) {
@@ -92,36 +95,25 @@ const EnrollComponent = ({ currentUser }) => {
   };
 
   if (!currentUser) {
-    return (
-      <main className="landing-page">
-        <section className="landing-panel">
-          <h1 className="landing-title">點餐網站</h1>
-          <div className="landing-card">
-            <button
-              type="button"
-              className="landing-button landing-button-primary"
-              onClick={() => navigate("/register")}
-            >
-              註冊
-            </button>
-            <button
-              type="button"
-              className="landing-button landing-button-secondary"
-              onClick={() => navigate("/login")}
-            >
-              登入
-            </button>
-          </div>
-        </section>
-      </main>
-    );
+    return <AuthEntryComponent setCurrentUser={setCurrentUser} />;
   }
 
   return (
     <div className="product-page">
-      <div className="search input-group mb-3" style={{ maxWidth: "60rem", margin: "0 auto" }}>
-        <input type="text" className="form-control" onChange={handleChangeInput} />
-        <button onClick={handleSearch} className="btn btn-primary" style={{ minWidth: "8rem" }}>
+      <div
+        className="search input-group mb-3"
+        style={{ maxWidth: "60rem", margin: "0 auto" }}
+      >
+        <input
+          type="text"
+          className="form-control"
+          onChange={handleChangeInput}
+        />
+        <button
+          onClick={handleSearch}
+          className="btn btn-primary"
+          style={{ minWidth: "8rem" }}
+        >
           搜尋餐點
         </button>
       </div>

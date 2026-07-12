@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { QRCodeCanvas } from "qrcode.react";
 import AuthService from "../services/auth.service";
@@ -10,6 +10,7 @@ const QRCodeComponent = ({ currentUser }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [deletingQrCodeId, setDeletingQrCodeId] = useState("");
+  const qrCardRefs = useRef(new Map());
 
   const buildQrUrl = (token) =>
     `${
@@ -91,6 +92,41 @@ const QRCodeComponent = ({ currentUser }) => {
     }
   };
 
+  const handleDownload = (qrCode) => {
+    const card = qrCardRefs.current.get(qrCode._id);
+    const qrCanvas = card?.querySelector("canvas");
+
+    if (!qrCanvas) {
+      setMessage("QR Code 尚未載入完成，請稍後再試。");
+      return;
+    }
+
+    const padding = 32;
+    const titleHeight = 48;
+    const outputCanvas = document.createElement("canvas");
+    outputCanvas.width = qrCanvas.width + padding * 2;
+    outputCanvas.height = qrCanvas.height + padding * 2 + titleHeight;
+
+    const context = outputCanvas.getContext("2d");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+    context.fillStyle = "#1f2937";
+    context.font = "bold 24px Arial, sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(
+      `桌號 ${qrCode.tableNumber}`,
+      outputCanvas.width / 2,
+      padding + titleHeight / 2
+    );
+    context.drawImage(qrCanvas, padding, padding + titleHeight);
+
+    const link = document.createElement("a");
+    link.download = `桌號-${qrCode.tableNumber}-QRCode.png`;
+    link.href = outputCanvas.toDataURL("image/png");
+    link.click();
+  };
+
   return (
     <div className="qr-code-page">
       <h2>店家 QR Code</h2>
@@ -140,8 +176,22 @@ const QRCodeComponent = ({ currentUser }) => {
           {qrList.map((item) => (
             <div
               key={item._id}
+              ref={(node) => {
+                if (node) {
+                  qrCardRefs.current.set(item._id, node);
+                } else {
+                  qrCardRefs.current.delete(item._id);
+                }
+              }}
               className="card qr-code-card"
             >
+              <button
+                type="button"
+                className="qr-code-download"
+                onClick={() => handleDownload(item)}
+              >
+                下載
+              </button>
               <h5 className="qr-code-title">桌號 {item.tableNumber}</h5>
 
               <QRCodeCanvas value={buildQrUrl(item.token)} size={220} />
