@@ -24,7 +24,11 @@ const AuthEntryComponent = ({ setCurrentUser }) => {
   return (
     <main className="auth-entry-page">
       <section className="auth-entry-panel">
-        <h1 className="auth-entry-title">點餐網站</h1>
+        <h1 className="auth-entry-title">
+          Scan to Order
+          <br />
+          <span className="auth-entry-subtitle">掃描點餐</span>
+        </h1>
 
         <div className="auth-entry-card">
           <h2 className="auth-entry-heading">登入</h2>
@@ -63,7 +67,7 @@ const AuthEntryComponent = ({ setCurrentUser }) => {
 
           <p className="auth-entry-switch">
             還沒有帳號？
-            <Link to="/register">註冊</Link>
+            <Link to="/register">前往註冊</Link>
           </p>
         </div>
       </section>

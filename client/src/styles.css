@@ -32,6 +32,10 @@ body {
   letter-spacing: 0;
 }
 
+.auth-entry-subtitle {
+  font-size: 0.65em;
+}
+
 .auth-entry-card {
   padding: 1.5rem;
   border: 1px solid #d7e0ea;
