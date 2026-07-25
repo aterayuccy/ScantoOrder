@@ -25,7 +25,7 @@ router.use((req,res,next)=>{
 router.get("/", async (req, res) => {
     try{
         let productFound = await Product.find({})    
-        .populate("seller",["username","email","password"])
+        .populate("seller",["username"])
         .exec();
         return res.send(productFound);
     } catch (e) {
@@ -37,7 +37,7 @@ router.get("/", async (req, res) => {
 router.get("/seller/:_seller_id",  async(req, res) => {
     let {_seller_id} = req.params;
     let productFound = await Product.find({seller:_seller_id})
-    .populate("seller",["username","email"])
+    .populate("seller",["username"])
     .exec();
     return res.send(productFound);
 });
@@ -45,7 +45,7 @@ router.get("/seller/:_seller_id",  async(req, res) => {
 router.get("/buyer/:_buyer_id",async(req,res)=>{
     let{_buyer_id}=req.params;
     let productFound = await Product.find({"buyer.user":_buyer_id})
-    .populate("seller",["username","email"])
+    .populate("seller",["username"])
     .exec();
     return res.send(productFound);
 
@@ -55,7 +55,7 @@ router.get("/findByName/:name",async(req,res)=>{
     let {name} =req.params;
     try{
         let productFound = await Product.find({title:name})
-        .populate("seller",["email","username"])
+        .populate("seller",["username"])
         .exec();
         return res.send(productFound);
     } catch (e) {
@@ -68,7 +68,7 @@ router.get("/:_id",async(req,res)=>{
     let {_id} =req.params;
     try{
         let productFound = await Product.findOne({_id})
-        .populate("seller",["email"])
+        .populate("seller",["username"])
         .populate({ path: "buyer.user", select: "username" })
         .exec();
         return res.send(productFound);

@@ -1,12 +1,18 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import AuthService from "../services/auth.service";
 
 const QRLoginComponent = ({ setCurrentUser }) => {
   const [searchParams] = useSearchParams();
   const [message, setMessage] = useState("登入中...");
+  const loginStartedRef = useRef(false);
 
   useEffect(() => {
+    if (loginStartedRef.current) {
+      return;
+    }
+
+    loginStartedRef.current = true;
     const qrToken = searchParams.get("qrToken");
 
     if (!qrToken) {

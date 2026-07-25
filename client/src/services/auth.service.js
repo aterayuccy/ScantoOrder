@@ -12,7 +12,18 @@ const QR_BUYER_NAV_KEY = "qrBuyerNavigation";
 const getStoredUser = (storage, key) => {
   try {
     const value = storage.getItem(key);
-    return value ? JSON.parse(value) : null;
+    if (!value) {
+      return null;
+    }
+
+    const storedUser = JSON.parse(value);
+
+    if (!Number.isInteger(storedUser?.authVersion)) {
+      storage.removeItem(key);
+      return null;
+    }
+
+    return storedUser;
   } catch (e) {
     return null;
   }
@@ -71,7 +82,6 @@ const getCurrentSessionUser = () => {
 
   return sellerUser;
 };
-const getCurrentToken = () => getCurrentSessionUser()?.token || "";
 const getSellerToken = (currentUser) => {
   if (currentUser?.user?.role === "seller") {
     return currentUser.token || "";
@@ -87,9 +97,9 @@ const getSellerToken = (currentUser) => {
 };
 
 class AuthService {
-  login(email, password) {
+  login(username, password) {
     return axios.post(API_URL + "/login", {
-      email,
+      username,
       password,
     });
   }
@@ -103,12 +113,10 @@ class AuthService {
     }
   }
 
-  register(username, email, password, role) {
+  register(username, password) {
     return axios.post(API_URL + "/register", {
       username,
-      email,
       password,
-      role,
     });
   }
 
@@ -180,19 +188,8 @@ class AuthService {
     return axios.post(API_URL + "/qr-login", { qrToken });
   }
 
-  updateRole(newRole) {
-    const token = getCurrentToken();
-
-    return axios.patch(
-      API_URL + "/updateRole",
-      { role: newRole },
-      {
-        headers: {
-          Authorization: "jwt " + token,
-        },
-      }
-    );
-  }
 }
 
-export default new AuthService();
+const authService = new AuthService();
+
+export default authService;

@@ -6,18 +6,18 @@ const userSchema=new Schema({
     username:{
         type:String,
         required:true,
+        trim:true,
         minlength:3,
-        maxlength:50
-    },
-    email:{
-        type:String,
-        required:true,
-        minlength:6,
-        maxlength:50
+        maxlength:20,
+        match:/^[A-Za-z0-9_]+$/
     },
     password:{
         type:String,
-        required:true
+        required:true,
+        minlength:8,
+        maxlength:64,
+        match:/^[\x20-\x7E]+$/,
+        select:false
     },
     role:{
         type:String,
@@ -33,11 +33,17 @@ const userSchema=new Schema({
         ref: "User",
         default: null
     },
-    // date:{
-    //     type:Date,
-    //     default:Date.now
-    // }
+}, {
+    timestamps:true,
 })
+
+userSchema.index(
+    {username:1},
+    {
+        unique:true,
+        collation:{locale:"en",strength:2}
+    }
+);
 
 
 userSchema.methods.isBuyer= function(){
