@@ -6,6 +6,91 @@ const QrCode = require("../models").qrCode;
 const jwt=require("jsonwebtoken");
 const passport = require("passport");
 const crypto = require("crypto");
+const bcrypt = require("bcrypt");
+
+const LOGIN_ATTEMPT_LIMIT = 5;
+const IP_LOGIN_ATTEMPT_LIMIT = 25;
+const LOGIN_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+const AUTH_VERSION = Number(process.env.AUTH_VERSION || 1);
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync("invalid-password-placeholder-123", 10);
+const loginAttempts = new Map();
+const ipLoginAttempts = new Map();
+let lastLoginAttemptCleanupAt = 0;
+
+const toPublicUser = (user) => {
+  const publicUser = user.toObject ? user.toObject() : { ...user };
+  delete publicUser.password;
+  delete publicUser.email;
+  delete publicUser.__v;
+  return publicUser;
+};
+
+const signUserToken = (user) =>
+  jwt.sign(
+    { _id: user._id, username: user.username, authVersion: AUTH_VERSION },
+    process.env.PASSPORT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || "12h" }
+  );
+
+const getLoginAttemptKey = (req, username) => {
+  return `${getLoginIpAddress(req)}:${username.toLowerCase()}`;
+};
+
+const getLoginIpAddress = (req) =>
+  req.ip || req.socket?.remoteAddress || "unknown";
+
+const getActiveLoginAttempts = (attemptStore, key) => {
+  const attempt = attemptStore.get(key);
+
+  if (!attempt) {
+    return 0;
+  }
+
+  if (Date.now() - attempt.startedAt >= LOGIN_ATTEMPT_WINDOW_MS) {
+    attemptStore.delete(key);
+    return 0;
+  }
+
+  return attempt.count;
+};
+
+const recordLoginFailure = (attemptStore, key, maximumEntries) => {
+  const currentCount = getActiveLoginAttempts(attemptStore, key);
+  const existingAttempt = attemptStore.get(key);
+
+  if (!existingAttempt && attemptStore.size >= maximumEntries) {
+    const oldestKey = attemptStore.keys().next().value;
+    attemptStore.delete(oldestKey);
+  }
+
+  attemptStore.set(key, {
+    count: currentCount + 1,
+    startedAt: existingAttempt?.startedAt || Date.now(),
+  });
+};
+
+const cleanupExpiredLoginAttempts = () => {
+  const now = Date.now();
+
+  if (now - lastLoginAttemptCleanupAt < 60 * 1000) {
+    return;
+  }
+
+  [loginAttempts, ipLoginAttempts].forEach((attemptStore) => {
+    for (const [key, attempt] of attemptStore.entries()) {
+      if (now - attempt.startedAt >= LOGIN_ATTEMPT_WINDOW_MS) {
+        attemptStore.delete(key);
+      }
+    }
+  });
+
+  lastLoginAttemptCleanupAt = now;
+};
+
+const recordFailedLoginForRequest = (loginAttemptKey, ipAddress) => {
+  recordLoginFailure(loginAttempts, loginAttemptKey, 5000);
+  recordLoginFailure(ipLoginAttempts, ipAddress, 1000);
+};
 
 
 router.use((req,res,next)=>{
@@ -20,97 +105,102 @@ router.get("/testAPI",(req,res) =>{
 router.post("/register", async(req,res) =>{
 
     const registerData = {
-        ...req.body,
+        username: req.body.username,
+        password: req.body.password,
         role: "seller",
     };
 
-    let {error}=registerValidation(registerData);
+    const {error, value}=registerValidation(registerData);
     if (error) return res.status(400).send(error.details[0].message);
 
-
-    const emailExist = await User.findOne({email:registerData.email});
-    if (emailExist) return res.status(400).send("此信箱已經被註冊過了");
-
-
-    let {email,username,password,role}=registerData;
-    let newUser=new User({email,username,password,role});
     try {
+        const {username,password,role}=value;
+
+        if (username.toLowerCase().startsWith("guest_")) {
+            return res.status(400).send("此使用者名稱為系統保留");
+        }
+
+        const usernameExists = await User.findOne({username})
+          .collation({locale:"en",strength:2})
+          .lean();
+
+        if (usernameExists) {
+            return res.status(409).send("此使用者名稱已被使用");
+        }
+
+        const newUser=new User({username,password,role});
         let savedUser=await newUser.save();
-        return res.send({
+        return res.status(201).send({
             msg:"使用者成功儲存",
-            savedUser
+            user:toPublicUser(savedUser)
         });
     } catch (e) {
+        if (e?.code === 11000) {
+            return res.status(409).send("此使用者名稱已被使用");
+        }
+
+        console.log("register error:", e);
         return res.status(500).send("無法儲存使用者");        
     }
 })
 
 router.post("/login", async(req,res) =>{
 
-    let {error}=loginValidation(req.body);
+    const {error, value}=loginValidation(req.body);
     if (error) return res.status(400).send(error.details[0].message);
 
+    const {username, password} = value;
+    cleanupExpiredLoginAttempts();
+    const loginAttemptKey = getLoginAttemptKey(req, username);
+    const ipAddress = getLoginIpAddress(req);
 
-    const foundUser = await User.findOne({email:req.body.email});
-    if (!foundUser) {
-        return res.status(401).send("無法找到使用者，請確認信箱是否正確");
+    if (
+        getActiveLoginAttempts(loginAttempts, loginAttemptKey) >= LOGIN_ATTEMPT_LIMIT ||
+        getActiveLoginAttempts(ipLoginAttempts, ipAddress) >= IP_LOGIN_ATTEMPT_LIMIT
+    ) {
+        return res.status(429).send("登入嘗試次數過多，請於 15 分鐘後再試");
     }
 
-    foundUser.comparePassword(req.body.password, async (err,isMatch)=>{
+    const foundUser = await User.findOne({username})
+      .collation({locale:"en",strength:2})
+      .select("+password");
+    if (!foundUser) {
+        await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
+        recordFailedLoginForRequest(loginAttemptKey, ipAddress);
+        return res.status(401).send("使用者名稱或密碼錯誤");
+    }
+
+    foundUser.comparePassword(password, async (err,isMatch)=>{
         if (err) return res.status(500).send(err);
 
         if (isMatch) {
             try {
                 if (foundUser.role !== "seller") {
-                    foundUser.role = "seller";
-                    foundUser.tableNumber = null;
-                    foundUser.qrSeller = null;
-                    await foundUser.save();
+                    recordFailedLoginForRequest(loginAttemptKey, ipAddress);
+                    return res.status(401).send("使用者名稱或密碼錯誤");
                 }
 
-            const tokenObject={_id:foundUser._id,email:foundUser.email};
-            const token=jwt.sign(tokenObject,process.env.PASSPORT_SECRET);
+            loginAttempts.delete(loginAttemptKey);
+            const token=signUserToken(foundUser);
             return res.send({
                 message:"登入成功",
                 token:token,
-                user:foundUser
+                authVersion:AUTH_VERSION,
+                user:toPublicUser(foundUser)
             });
             } catch (e) {
                 return res.status(500).send(e);
             }
         }
         else {
-            return res.status(401).send("密碼錯誤");
+            recordFailedLoginForRequest(loginAttemptKey, ipAddress);
+            return res.status(401).send("使用者名稱或密碼錯誤");
         }
 
     })
     
 })
 
-
-router.patch("/updateRole", passport.authenticate("jwt", { session: false }), async (req, res) => {
-    const { role } = req.body;
-    
-
-    if (!["buyer", "seller"].includes(role)) {
-        return res.status(400).send("無效的角色");
-    }
-
-    try {
-        const updatedUser = await User.findByIdAndUpdate(
-            req.user._id,
-            { role },
-            { new: true }
-        ).select("-password");
-
-        res.send({
-            message: "角色更新成功",
-            user: updatedUser,
-        });
-    } catch (e) {
-        res.status(500).send("角色更新失敗");
-    }
-});
 
 router.get(
   "/qr-codes",
@@ -234,13 +324,12 @@ router.post("/qr-login", async (req, res) => {
       return res.status(400).send("無效的 QR code");
     }
 
-    const guestEmail = `guest_${Date.now()}@guest.com`;
-    const guestName = `guest_${Date.now()}`;
+    const guestName = `guest_${crypto.randomBytes(6).toString("hex")}`;
+    const guestPassword = `${crypto.randomBytes(16).toString("hex")}A1`;
 
     let guestUser = new User({
-      email: guestEmail,
       username: guestName,
-      password: "12345678",
+      password: guestPassword,
       role: "buyer",
       tableNumber: record.tableNumber,
       qrSeller: record.seller,
@@ -248,13 +337,13 @@ router.post("/qr-login", async (req, res) => {
 
     guestUser = await guestUser.save();
 
-    const tokenObject = { _id: guestUser._id, email: guestUser.email };
-    const buyerToken = jwt.sign(tokenObject, process.env.PASSPORT_SECRET);
+    const buyerToken = signUserToken(guestUser);
 
     return res.send({
       message: "QR 登入成功",
       token: buyerToken,
-      user: guestUser,
+      authVersion: AUTH_VERSION,
+      user: toPublicUser(guestUser),
       sellerId: record.seller,
       tableNumber: record.tableNumber,
     });

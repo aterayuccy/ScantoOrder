@@ -75,6 +75,13 @@ body {
   font-weight: 700;
 }
 
+.auth-entry-help {
+  margin: -0.25rem 0 0;
+  color: #6b7280;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
 .auth-entry-switch {
   margin: 1rem 0 0;
   color: #6b7280;
@@ -90,6 +97,90 @@ body {
 
 .auth-entry-switch a:hover {
   text-decoration: underline;
+}
+
+.profile-page {
+  display: flex;
+  justify-content: center;
+  min-height: calc(100vh - 4rem);
+  padding: 3rem 1.5rem;
+  background: #f6f8fb;
+}
+
+.profile-card {
+  width: min(100%, 30rem);
+  height: fit-content;
+  padding: 2rem;
+  border: 1px solid #dbe3ef;
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 1.25rem 3rem rgba(15, 23, 42, 0.1);
+  text-align: center;
+}
+
+.profile-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 6rem;
+  height: 6rem;
+  margin: 0 auto 1rem;
+  border: 0.3rem solid #ffffff;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 0 0 1px #dbe3ef, 0 0.75rem 1.5rem rgba(15, 23, 42, 0.16);
+}
+
+.profile-username {
+  margin: 0;
+  color: #111827;
+  font-size: 1.75rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.profile-role {
+  margin: 0.35rem 0 1.5rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.profile-details {
+  margin: 0 0 1.5rem;
+  text-align: left;
+}
+
+.profile-details > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  border-top: 1px solid #e5e7eb;
+}
+
+.profile-details > div:last-child {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.profile-details dt {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.profile-details dd {
+  margin: 0;
+  color: #111827;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.profile-logout {
+  min-width: 8rem;
+  font-weight: 700;
 }
 
 .landing-page {
@@ -240,7 +331,7 @@ body {
 .qr-code-grid {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 15.75rem), 15.75rem));
   gap: 1rem;
-  width: min(100%, 32.5rem);
+  width: 100%;
   justify-content: start;
 }
 
@@ -250,7 +341,8 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
-  width: 15.75rem;
+  width: 100%;
+  max-width: 15.75rem;
   padding: 0.75rem;
 }
 
@@ -343,6 +435,10 @@ body {
 
   .auth-entry-card {
     padding: 1.25rem;
+  }
+
+  .qr-code-grid {
+    justify-content: center;
   }
 
   .product-card {

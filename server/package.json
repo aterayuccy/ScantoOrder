@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "migrate:auth": "node scripts/migrate-auth-users.js",
+    "test:auth": "node scripts/verify-auth-flow.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

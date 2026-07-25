@@ -1,6 +1,7 @@
 let JwtStrategy = require('passport-jwt').Strategy;
 let ExtractJwt = require('passport-jwt').ExtractJwt;
 const User = require('../models').user;
+const AUTH_VERSION = Number(process.env.AUTH_VERSION || 1);
 
 module.exports = (passport)=> {
     let opts={}
@@ -12,6 +13,10 @@ module.exports = (passport)=> {
     passport.use(
         new JwtStrategy(opts, async function(jwt_payload, done){
             try{
+                if (jwt_payload.authVersion !== AUTH_VERSION) {
+                    return done(null, false);
+                }
+
                 let foundUser=await User.findOne({_id : jwt_payload._id }).exec();
                 if (foundUser){
                     return done(null, foundUser);

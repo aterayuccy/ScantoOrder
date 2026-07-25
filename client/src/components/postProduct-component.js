@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import ProductService from "../services/product.service";
 
 const PostProductComponent = (props) => {
-  let { currentUser, setCurrentUser } = props;
+  let { currentUser } = props;
   let [title, setTitle] = useState("");
   let [description, setDescription] = useState("");
   let [price, setPrice] = useState(0);
@@ -54,7 +54,7 @@ const PostProductComponent = (props) => {
           </button>
         </div>
       )}      
-      {currentUser && currentUser.user.role == "seller" && (
+      {currentUser && currentUser.user.role === "seller" && (
         <div className="form-group">
           <label for="exampleforTitle">商品標題：</label>
           <input
@@ -69,7 +69,6 @@ const PostProductComponent = (props) => {
           <textarea
             className="form-control"
             id="exampleforContent"
-            aria-describedby="emailHelp"
             name="content"
             onChange={handleChangeDesciption}
           />
