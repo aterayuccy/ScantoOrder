@@ -2,7 +2,9 @@ import axios from "axios";
 
 const API_BASE_URL =
   process.env.REACT_APP_API_BASE_URL ||
-  `${window.location.protocol}//${window.location.hostname}:8080`;
+  (window.location.port === "3000"
+    ? `${window.location.protocol}//${window.location.hostname}:8080`
+    : window.location.origin);
 const API_URL = `${API_BASE_URL}/api/product`;
 
 export const UPLOADS_URL = `${API_BASE_URL}/uploads`;

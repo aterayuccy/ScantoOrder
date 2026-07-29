@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: scan-to-order
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 20.19.0
+      - key: PASSPORT_SECRET
+        generateValue: true
+      - key: MONGODB_URI
+        sync: false
+      - key: LINE_PAY_ENV
+        value: sandbox
+      - key: LINE_PAY_API_VERSION
+        value: v4
