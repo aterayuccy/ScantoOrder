@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { QRCodeCanvas } from "qrcode.react";
+
 import AuthService from "../services/auth.service";
 
 const QRCodeComponent = ({ currentUser }) => {
   const [count, setCount] = useState("");
   const [qrList, setQrList] = useState([]);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("warning");
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [deletingQrCodeId, setDeletingQrCodeId] = useState("");
@@ -18,75 +20,78 @@ const QRCodeComponent = ({ currentUser }) => {
     }/qr-login?qrToken=${token}`;
 
   useEffect(() => {
-    if (!currentUser || currentUser.user.role !== "seller") {
-      return;
-    }
+    if (!currentUser || currentUser.user.role !== "seller") return;
 
+    let active = true;
     AuthService.setSellerUser(currentUser);
     setIsLoading(true);
+
     AuthService.getQrCodes(currentUser)
-      .then((res) => {
-        setQrList(res.data.qrCodes || []);
+      .then((response) => {
+        if (!active) return;
+        setQrList(response.data.qrCodes || []);
         setMessage("");
       })
-      .catch((e) => {
-        console.log(e);
-        setMessage(e?.response?.data || "取得 QR code 失敗");
+      .catch((error) => {
+        console.error(error);
+        if (!active) return;
+        setMessage(error?.response?.data || "QR Code 載入失敗。");
+        setMessageType("warning");
       })
       .finally(() => {
-        setIsLoading(false);
+        if (active) setIsLoading(false);
       });
+
+    return () => {
+      active = false;
+    };
   }, [currentUser]);
 
-  if (!currentUser) {
-    return <Navigate to="/login" />;
-  }
-
-  if (currentUser.user.role !== "seller") {
-    return <Navigate to="/" />;
-  }
+  if (!currentUser) return <Navigate to="/login" />;
+  if (currentUser.user.role !== "seller") return <Navigate to="/" />;
 
   const handleGenerate = async () => {
     const total = Number(count);
 
-    if (!Number.isInteger(total) || total < 1) {
-      setMessage("請輸入正確的 QR code 生成數量");
+    if (!Number.isInteger(total) || total < 1 || total > 100) {
+      setMessage("請輸入 1～100 之間的整數。");
+      setMessageType("warning");
       return;
     }
 
     try {
       setIsGenerating(true);
-      setMessage("正在生成...");
-
-      const res = await AuthService.createQrToken(total, currentUser);
-
-      setQrList(res.data.qrCodes || []);
-      setCount("");
       setMessage("");
-    } catch (e) {
-      console.log(e);
-      setMessage(e?.response?.data || "生成 QR code 失敗");
+      const response = await AuthService.createQrToken(total, currentUser);
+      setQrList(response.data.qrCodes || []);
+      setCount("");
+      setMessage(`已新增 ${total} 個桌號 QR Code。`);
+      setMessageType("success");
+    } catch (error) {
+      console.error(error);
+      setMessage(error?.response?.data || "產生 QR Code 失敗。");
+      setMessageType("warning");
     } finally {
       setIsGenerating(false);
     }
   };
 
   const handleDelete = async (qrCode) => {
-    if (!window.confirm(`確定要刪除桌號 ${qrCode.tableNumber} 的 QR code 嗎？`)) {
+    if (!window.confirm(`確定要刪除桌號 ${qrCode.tableNumber} 的 QR Code 嗎？`)) {
       return;
     }
 
     try {
       setDeletingQrCodeId(qrCode._id);
-      setMessage("正在刪除...");
-
-      const res = await AuthService.deleteQrCode(qrCode._id, currentUser);
-
-      setQrList(res.data.qrCodes || []);
       setMessage("");
-    } catch (e) {
-      console.log(e);
-      setMessage(e?.response?.data || "刪除 QR code 失敗");
+      const response = await AuthService.deleteQrCode(qrCode._id, currentUser);
+      setQrList(response.data.qrCodes || []);
+      setMessage(`桌號 ${qrCode.tableNumber} 已刪除。`);
+      setMessageType("success");
+    } catch (error) {
+      console.error(error);
+      setMessage(error?.response?.data || "刪除 QR Code 失敗。");
+      setMessageType("warning");
     } finally {
       setDeletingQrCodeId("");
     }
@@ -98,6 +103,7 @@ const QRCodeComponent = ({ currentUser }) => {
 
     if (!qrCanvas) {
       setMessage("QR Code 尚未載入完成，請稍後再試。");
+      setMessageType("warning");
       return;
     }
 
@@ -110,7 +116,7 @@ const QRCodeComponent = ({ currentUser }) => {
     const context = outputCanvas.getContext("2d");
     context.fillStyle = "#ffffff";
     context.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
-    context.fillStyle = "#1f2937";
+    context.fillStyle = "#0f172a";
     context.font = "bold 24px Arial, sans-serif";
     context.textAlign = "center";
     context.textBaseline = "middle";
@@ -128,87 +134,109 @@ const QRCodeComponent = ({ currentUser }) => {
   };
 
   return (
-    <div className="qr-code-page">
-      <h2>店家 QR Code</h2>
-      <p>選擇要新增的 QR code 數量，系統會自動接續桌號。</p>
+    <main className="app-page qr-code-page">
+      <div className="app-page__inner">
+        <header className="app-page-header">
+          <div>
+            <p className="ui-eyebrow">店家後台</p>
+            <h1>桌號 QR Code</h1>
+            <p>產生桌號後即可下載列印，顧客掃描後會自動帶入桌號。</p>
+          </div>
+          <span className="ui-count-badge">{qrList.length} 個桌號</span>
+        </header>
 
-      <div
-        className="input-group qr-generate-control"
-        style={{
-          marginTop: "1.5rem",
-          marginBottom: "1.5rem",
-        }}
-      >
-        <input
-          type="number"
-          min="1"
-          className="form-control"
-          placeholder="新增數量"
-          value={count}
-          onChange={(e) => setCount(e.target.value)}
-        />
-
-        <button
-          className="btn btn-primary"
-          onClick={handleGenerate}
-          disabled={isGenerating}
-        >
-          {isGenerating ? "生成中..." : "生成"}
-        </button>
-      </div>
-
-      {message && <p>{message}</p>}
-
-      {isLoading && <p>載入 QR code 中...</p>}
-
-      {!isLoading && qrList.length === 0 && (
-        <p>目前尚未生成 QR code，請先輸入數量並生成。</p>
-      )}
-
-      {qrList.length > 0 && (
-        <div
-          className="qr-code-grid"
-          style={{
-            display: "grid",
-            marginTop: "2rem",
-          }}
-        >
-          {qrList.map((item) => (
-            <div
-              key={item._id}
-              ref={(node) => {
-                if (node) {
-                  qrCardRefs.current.set(item._id, node);
-                } else {
-                  qrCardRefs.current.delete(item._id);
-                }
+        <section className="ui-card qr-control-card">
+          <div>
+            <h2>新增桌號</h2>
+            <p>輸入要新增的數量，系統會接續目前最大的桌號。</p>
+          </div>
+          <div className="qr-generate-control">
+            <input
+              type="number"
+              min="1"
+              max="100"
+              className="form-control"
+              placeholder="新增數量"
+              value={count}
+              onChange={(event) => setCount(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") handleGenerate();
               }}
-              className="card qr-code-card"
+              aria-label="新增 QR Code 數量"
+            />
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleGenerate}
+              disabled={isGenerating}
             >
-              <button
-                type="button"
-                className="qr-code-download"
-                onClick={() => handleDownload(item)}
-              >
-                下載
-              </button>
-              <h5 className="qr-code-title">桌號 {item.tableNumber}</h5>
+              {isGenerating ? "產生中…" : "產生"}
+            </button>
+          </div>
+        </section>
 
-              <QRCodeCanvas value={buildQrUrl(item.token)} size={220} />
+        {message && (
+          <div className={`alert alert-${messageType}`} role="status">
+            {message}
+          </div>
+        )}
 
-              <button
-                className="btn btn-danger btn-sm"
-                onClick={() => handleDelete(item)}
-                disabled={deletingQrCodeId === item._id || isGenerating}
-                style={{ width: "220px", maxWidth: "100%" }}
+        {isLoading ? (
+          <section className="ui-status" aria-live="polite">
+            <span className="ui-spinner" aria-hidden="true" />
+            <p>QR Code 載入中…</p>
+          </section>
+        ) : qrList.length === 0 ? (
+          <section className="ui-empty">
+            <span className="ui-empty-icon" aria-hidden="true">
+              ▦
+            </span>
+            <h2>還沒有桌號 QR Code</h2>
+            <p>從上方輸入新增數量，即可建立第一批桌號。</p>
+          </section>
+        ) : (
+          <section className="qr-code-grid">
+            {qrList.map((item) => (
+              <article
+                key={item._id}
+                ref={(node) => {
+                  if (node) qrCardRefs.current.set(item._id, node);
+                  else qrCardRefs.current.delete(item._id);
+                }}
+                className="qr-code-card"
               >
-                {deletingQrCodeId === item._id ? "刪除中..." : "刪除"}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+                <div className="qr-code-card__header">
+                  <div>
+                    <span>桌號</span>
+                    <h2>{item.tableNumber}</h2>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => handleDownload(item)}
+                  >
+                    下載
+                  </button>
+                </div>
+
+                <div className="qr-code-canvas">
+                  <QRCodeCanvas value={buildQrUrl(item.token)} size={220} />
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn-outline-danger"
+                  onClick={() => handleDelete(item)}
+                  disabled={deletingQrCodeId === item._id || isGenerating}
+                >
+                  {deletingQrCodeId === item._id ? "刪除中…" : "刪除桌號"}
+                </button>
+              </article>
+            ))}
+          </section>
+        )}
+      </div>
+    </main>
   );
 };
 

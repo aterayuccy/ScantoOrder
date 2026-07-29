@@ -1,188 +1,228 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+
 import ProductService from "../services/product.service";
+import {
+  createDefaultSpecialRequestConfig,
+  normalizeOptionGroups,
+  normalizeSpecialRequestConfig,
+  validateProductOptions,
+} from "../utils/product-options";
+import ProductOptionsEditor from "./product-options-editor";
+
+const toMessage = (error, fallback) => {
+  const data = error?.response?.data;
+  if (typeof data === "string") return data;
+  return data?.message || fallback;
+};
 
 const ModifyProductComponent = ({ currentUser }) => {
   const { productId } = useParams();
   const navigate = useNavigate();
-
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
+  const [type, setType] = useState("");
+  const [image, setImage] = useState(null);
+  const [optionGroups, setOptionGroups] = useState([]);
+  const [specialRequestConfig, setSpecialRequestConfig] = useState(() =>
+    createDefaultSpecialRequestConfig()
+  );
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
-  const [type, setType] = useState("");
-  const [image, setImage] = useState("");
-
-  const handleTakeToLogin = () => {
-    navigate("/login");
-  };
-  const handleChangeImage = (e) => {
-  setImage(e.target.files[0]);
-};
-  const toText = (data, fallback = "發生錯誤") => {
-    if (data == null) return fallback;
-    if (typeof data === "string") return data;
-    if (typeof data === "number" || typeof data === "boolean") {
-      return String(data);
-    }
-    if (data.message && typeof data.message === "string") {
-      return data.message;
-    }
-    try {
-      return JSON.stringify(data);
-    } catch (e) {
-      return fallback;
-    }
-  };
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!currentUser) {
-      setLoading(false);
-      return;
-    }
-
-    if (currentUser.user.role !== "seller") {
-      setMessage("只有賣家可以修改商品");
+    if (!currentUser || currentUser.user.role !== "seller") {
       setLoading(false);
       return;
     }
 
     ProductService.getProductById(productId)
-      .then((res) => {
-        const product = res.data || {};
+      .then((response) => {
+        const product = response.data || {};
         setTitle(product.title || "");
         setDescription(product.description || "");
         setPrice(product.price ?? "");
-        setLoading(false);
         setType(product.type || "");
+        setOptionGroups(normalizeOptionGroups(product.optionGroups || []));
+        setSpecialRequestConfig(
+          product.specialRequestConfig
+            ? normalizeSpecialRequestConfig(product.specialRequestConfig)
+            : createDefaultSpecialRequestConfig()
+        );
       })
       .catch((error) => {
-        console.log(error?.response || error);
-        setMessage(toText(error?.response?.data, "讀取商品失敗"));
-        setLoading(false);
-      });
+        setMessage(toMessage(error, "讀取品項失敗"));
+      })
+      .finally(() => setLoading(false));
   }, [currentUser, productId]);
 
-  const saveProduct = () => {
+  const saveProduct = async (event) => {
+    event.preventDefault();
     setMessage("");
+    const optionValidation = validateProductOptions(
+      optionGroups,
+      specialRequestConfig,
+      Number(price)
+    );
+    if (!optionValidation.valid) {
+      setMessage(optionValidation.errors[0].message);
+      return;
+    }
+    setSubmitting(true);
 
-    ProductService.updateProductWithImage(
-      productId,
-      title,
-      description,
-      Number(price),
-      type,
-      image
-    )
-      .then(() => {
-        window.alert("已儲存修改");
-        navigate("/myProduct");
-      })
-      .catch((error) => {
-        console.log(error?.response || error);
-        setMessage(toText(error?.response?.data, "儲存失敗"));
-      });
+    try {
+      await ProductService.updateProductWithImage(
+        productId,
+        title,
+        description,
+        Number(price),
+        type,
+        image,
+        optionGroups,
+        specialRequestConfig
+      );
+      window.alert("品項修改成功");
+      navigate("/myProduct");
+    } catch (error) {
+      setMessage(toMessage(error, "修改失敗，請檢查輸入內容"));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
+  if (!currentUser) {
+    return (
+      <div className="product-form-page">
+        <p>請先登入店家帳號。</p>
+        <button
+          className="btn btn-primary btn-lg"
+          onClick={() => navigate("/login")}
+        >
+          前往登入
+        </button>
+      </div>
+    );
+  }
+
+  if (currentUser.user.role !== "seller") {
+    return (
+      <div className="product-form-page">
+        <div className="alert alert-warning">只有店家帳號可以修改品項。</div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return <div className="product-form-page">載入中…</div>;
+  }
+
   return (
-    <div style={{ padding: "3rem" }}>
-      {!currentUser && (
-        <div>
-          <p>在修改商品之前，您必須先登入。</p>
-          <button
-            className="btn btn-primary btn-lg"
-            onClick={handleTakeToLogin}
-          >
-            帶我進入登入頁面
-          </button>
+    <div className="product-form-page">
+      <form className="product-form" onSubmit={saveProduct}>
+        <div className="product-form-heading">
+          <div>
+            <p className="product-form-eyebrow">菜單管理</p>
+            <h2>修改品項</h2>
+          </div>
+          <p>可依商品調整步驟數量、名稱、顧客可點內容與價格差額。</p>
         </div>
-      )}
 
-      {currentUser && currentUser.user.role === "seller" && (
-        <div className="form-group">
-
-          {loading ? (
-            <div>載入中...</div>
-          ) : (
-            <>
-              <label htmlFor="exampleforTitle">商品標題：</label>
+        <section className="product-form-section">
+          <h3>基本資料</h3>
+          <div className="product-form-grid">
+            <label className="form-label-field product-form-grid-wide">
+              <span>品項名稱</span>
               <input
-                name="title"
                 type="text"
                 className="form-control"
-                id="exampleforTitle"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                maxLength="50"
+                required
+                onChange={(event) => setTitle(event.target.value)}
               />
-              <br />
+            </label>
 
-              <label htmlFor="exampleforContent">內容：</label>
-              <textarea
-                className="form-control"
-                id="exampleforContent"
-                name="content"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-              <br />
-
-              <label htmlFor="exampleforPrice">價格：</label>
+            <label className="form-label-field">
+              <span>價格（NT$）</span>
               <input
-                name="price"
                 type="number"
                 className="form-control"
-                id="exampleforPrice"
                 value={price}
-                onChange={(e) => setPrice(e.target.value)}
+                min="0"
+                max="9999"
+                step="1"
+                required
+                onChange={(event) => setPrice(event.target.value)}
               />
-              <br />
-              <label htmlFor="exampleforType">分類：</label>
+            </label>
+
+            <label className="form-label-field">
+              <span>分類</span>
               <input
-                name="type"
                 type="text"
                 className="form-control"
-                id="exampleforType"
                 value={type}
-                onChange={(e) => setType(e.target.value)}
+                maxLength="50"
+                required
+                onChange={(event) => setType(event.target.value)}
               />
-              <br />
-              <label htmlFor="exampleforImage">商品圖片：</label>
+            </label>
+
+            <label className="form-label-field product-form-grid-wide">
+              <span>品項說明</span>
+              <textarea
+                className="form-control"
+                value={description}
+                maxLength="255"
+                rows="3"
+                onChange={(event) => setDescription(event.target.value)}
+              />
+            </label>
+
+            <label className="form-label-field product-form-grid-wide">
+              <span>更換圖片（未選擇時保留原圖）</span>
               <input
-                name="image"
                 type="file"
                 className="form-control"
-                id="exampleforImage"
                 accept="image/*"
-                onChange={handleChangeImage}
+                onChange={(event) => setImage(event.target.files[0] || null)}
               />
-              <br />
-              <button className="btn btn-primary" onClick={saveProduct}>
-                儲存
-              </button>
+            </label>
+          </div>
+        </section>
 
-              <br />
-              <br />
+        <ProductOptionsEditor
+          optionGroups={optionGroups}
+          setOptionGroups={setOptionGroups}
+          specialRequestConfig={specialRequestConfig}
+          setSpecialRequestConfig={setSpecialRequestConfig}
+        />
 
-              {message && (
-                <div className="alert alert-warning" role="alert">
-                  {typeof message === "string"
-                    ? message
-                    : JSON.stringify(message)}
-                </div>
-              )}
-            </>
-          )}
+        {message && (
+          <div className="alert alert-warning" role="alert">
+            {message}
+          </div>
+        )}
+
+        <div className="product-form-actions">
+          <button
+            type="button"
+            className="btn btn-outline-secondary"
+            onClick={() => navigate("/myProduct")}
+          >
+            取消
+          </button>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={submitting}
+          >
+            {submitting ? "儲存中…" : "儲存修改"}
+          </button>
         </div>
-      )}
-
-      {currentUser && currentUser.user.role !== "seller" && (
-        <div className="alert alert-warning" role="alert">
-          {typeof message === "string"
-            ? message || "只有賣家可以修改商品"
-            : JSON.stringify(message)}
-        </div>
-      )}
+      </form>
     </div>
   );
 };

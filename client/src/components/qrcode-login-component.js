@@ -1,54 +1,76 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+
 import AuthService from "../services/auth.service";
 
 const QRLoginComponent = ({ setCurrentUser }) => {
   const [searchParams] = useSearchParams();
-  const [message, setMessage] = useState("登入中...");
+  const [status, setStatus] = useState("loading");
+  const [message, setMessage] = useState("正在確認桌號…");
   const loginStartedRef = useRef(false);
 
   useEffect(() => {
-    if (loginStartedRef.current) {
-      return;
-    }
-
+    if (loginStartedRef.current) return undefined;
     loginStartedRef.current = true;
     const qrToken = searchParams.get("qrToken");
 
     if (!qrToken) {
-      setMessage("無效的 QR Code");
-      return;
+      setStatus("error");
+      setMessage("這個連結缺少 QR Code 資訊。");
+      return undefined;
     }
 
+    let redirectTimer;
     AuthService.qrLogin(qrToken)
-      .then((res) => {
-        console.log("qr login success =", res.data);
+      .then((response) => {
+        AuthService.setQrUser(response.data);
+        if (setCurrentUser) setCurrentUser(response.data);
+        setStatus("success");
+        setMessage("桌號確認完成，即將進入點餐頁。");
 
-        AuthService.setQrUser(res.data);
-
-        if (setCurrentUser) {
-          setCurrentUser(res.data);
-        }
-
-        setMessage(
-          `登入成功，身分：${res.data?.user?.role}，帳號：${res.data?.user?.username}`
-        );
-
-        setTimeout(() => {
-          window.location.href = "/product";
-        }, 1500);
+        redirectTimer = window.setTimeout(() => {
+          window.location.href = "/";
+        }, 900);
       })
-      .catch((e) => {
-        console.log("qr login failed =", e);
-        console.log("response =", e.response);
-        setMessage(e?.response?.data || "QR 登入失敗");
+      .catch((error) => {
+        console.error(error);
+        setStatus("error");
+        setMessage(error?.response?.data || "QR Code 登入失敗。");
       });
+
+    return () => {
+      if (redirectTimer) window.clearTimeout(redirectTimer);
+    };
   }, [searchParams, setCurrentUser]);
 
   return (
-    <div style={{ padding: "3rem" }}>
-      <p>{message}</p>
-    </div>
+    <main className="auth-entry-page qr-login-page">
+      <section className="qr-login-card" aria-live="polite">
+        <div className={`qr-login-icon is-${status}`} aria-hidden="true">
+          {status === "loading" ? (
+            <span className="ui-spinner" />
+          ) : status === "success" ? (
+            "✓"
+          ) : (
+            "!"
+          )}
+        </div>
+        <p className="ui-eyebrow">Scan to Order</p>
+        <h1>
+          {status === "loading"
+            ? "確認桌號"
+            : status === "success"
+            ? "可以開始點餐"
+            : "無法進入點餐頁"}
+        </h1>
+        <p>{message}</p>
+        {status === "error" && (
+          <Link className="btn btn-primary" to="/login">
+            前往登入
+          </Link>
+        )}
+      </section>
+    </main>
   );
 };
 

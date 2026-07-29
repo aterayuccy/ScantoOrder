@@ -5,16 +5,17 @@ import RegisterComponent from './components/register-component';
 import LoginComponent from './components/login-component';
 import ProfileComponent from './components/profile-component';
 import AuthService from './services/auth.service';
-import ProductComponent from './components/product-component';
+import ProductComponent from './components/cart-component';
 import PostProductComponent from './components/postProduct-component';
-import EnrollComponent from './components/enroll-component';
+import EnrollComponent from './components/menu-component';
 import MyProductComponent from './components/myProduct-component';
 import BuyerInfoComponent from "./components/buyerInfo-component";
 import ModifyProductComponent from "./components/modifyProduct-component";
-import SubmitComponent from "./components/submit-component";
-import OrderComponent from "./components/order-component";
+import SubmitComponent from "./components/order-confirmation-component";
+import OrderComponent from "./components/seller-order-component";
 import QrcodeComponent from "./components/qrcode-component";
 import QRLoginComponent from "./components/qrcode-login-component";
+import LinePayComponent from "./components/line-pay-component";
 
 function AppRoutes() {
   const location = useLocation();
@@ -23,6 +24,12 @@ function AppRoutes() {
   useEffect(() => {
     setCurrentUser(AuthService.getCurrentUser());
   }, [location.pathname]);
+
+  // React Router keeps the previous page's scroll position by default.  Reset
+  // it on every page change so a long product form never opens halfway down.
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [location.pathname, location.search]);
 
   return <Routes>
     <Route path="/" element={<Layout currentUser ={currentUser} setCurrentUser={setCurrentUser}/>} >
@@ -65,6 +72,10 @@ function AppRoutes() {
         setCurrentUser={setCurrentUser}
       />}/>
       <Route path="qr-login" element={<QRLoginComponent
+        currentUser={currentUser}
+        setCurrentUser={setCurrentUser}
+      />}/>
+      <Route path="payment/line-pay" element={<LinePayComponent
         currentUser={currentUser}
         setCurrentUser={setCurrentUser}
       />}/>

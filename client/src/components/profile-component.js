@@ -1,4 +1,5 @@
-import { Link, Navigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+
 import AuthService from "../services/auth.service";
 
 const AVATAR_COLORS = [
@@ -15,70 +16,93 @@ const getAvatarColor = (username = "") => {
     (total, character) => total + character.codePointAt(0),
     0
   );
-
   return AVATAR_COLORS[hash % AVATAR_COLORS.length];
 };
 
-const getUsernameInitial = (username = "") => {
-  const firstCharacter = Array.from(username.trim())[0];
-  return firstCharacter ? firstCharacter.toUpperCase() : "?";
-};
+const getUsernameInitial = (username = "") =>
+  Array.from(username.trim())[0]?.toUpperCase() || "?";
 
 const ProfileComponent = ({ currentUser, setCurrentUser }) => {
+  const navigate = useNavigate();
+
   const handleLogout = () => {
     AuthService.logout();
-    window.alert("您已成功登出");
     setCurrentUser(null);
+    navigate("/login", { replace: true });
   };
-
-  if (currentUser?.user?.role === "buyer") {
-    return <Navigate to="/product" />;
-  }
 
   if (!currentUser) {
     return (
-      <main className="profile-page">
-        <section className="profile-card">
-          <p>查看個人資料前，請先登入。</p>
-          <Link className="btn btn-primary" to="/login">
-            前往登入
-          </Link>
-        </section>
+      <main className="app-page profile-page">
+        <div className="app-page__inner app-page__inner--narrow">
+          <section className="ui-empty">
+            <h1>請先登入</h1>
+            <p>登入後即可查看個人資料。</p>
+            <Link className="btn btn-primary" to="/login">
+              前往登入
+            </Link>
+          </section>
+        </div>
       </main>
     );
   }
 
   const { username, role } = currentUser.user;
+  const isSeller = role === "seller";
 
   return (
-    <main className="profile-page">
-      <section className="profile-card">
-        <div
-          className="profile-avatar"
-          style={{ backgroundColor: getAvatarColor(username) }}
-          aria-label={`${username} 的使用者頭像`}
-        >
-          {getUsernameInitial(username)}
-        </div>
-
-        <h1 className="profile-username">{username}</h1>
-        <p className="profile-role">{role === "seller" ? "店家帳號" : "顧客帳號"}</p>
-
-        <dl className="profile-details">
+    <main className="app-page profile-page">
+      <div className="app-page__inner app-page__inner--narrow">
+        <header className="app-page-header profile-page-heading">
           <div>
-            <dt>使用者名稱</dt>
-            <dd>{username}</dd>
+            <p className="ui-eyebrow">帳號設定</p>
+            <h1>個人頁面</h1>
+            <p>查看目前登入的帳號與身分類型。</p>
           </div>
-          <div>
-            <dt>帳號身分</dt>
-            <dd>{role === "seller" ? "店家" : "顧客"}</dd>
-          </div>
-        </dl>
+        </header>
 
-        <Link className="btn btn-warning profile-logout" onClick={handleLogout} to="/">
-          登出
-        </Link>
-      </section>
+        <section className="profile-card">
+          <div
+            className="profile-avatar"
+            style={{ backgroundColor: getAvatarColor(username) }}
+            aria-label={`${username} 的頭像`}
+          >
+            {getUsernameInitial(username)}
+          </div>
+
+          <h2 className="profile-username">{username}</h2>
+          <span className="profile-role">
+            {isSeller ? "店家帳號" : "顧客帳號"}
+          </span>
+
+          <dl className="profile-details">
+            <div>
+              <dt>使用者名稱</dt>
+              <dd>{username}</dd>
+            </div>
+            <div>
+              <dt>帳號身分</dt>
+              <dd>{isSeller ? "店家" : "顧客"}</dd>
+            </div>
+          </dl>
+
+          <div className="profile-actions">
+            <Link
+              className="btn btn-outline-secondary"
+              to={isSeller ? "/myProduct" : "/"}
+            >
+              返回{isSeller ? "餐點管理" : "點餐頁"}
+            </Link>
+            <button
+              type="button"
+              className="btn btn-outline-danger"
+              onClick={handleLogout}
+            >
+              登出
+            </button>
+          </div>
+        </section>
+      </div>
     </main>
   );
 };
