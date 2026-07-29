@@ -7,6 +7,44 @@ const API_URL = `${API_BASE_URL}/api/product`;
 
 export const UPLOADS_URL = `${API_BASE_URL}/uploads`;
 
+const isMongoId = (value) => /^[a-f\d]{24}$/i.test(String(value || ""));
+
+const serializeOptionGroups = (groups) =>
+  (Array.isArray(groups) ? groups : []).map((group) => {
+    const serializedGroup = {
+      name: String(group?.name ?? group?.label ?? "").trim(),
+      selectionType:
+        group?.selectionType === "multiple" ? "multiple" : "single",
+      options: (Array.isArray(group?.options) ? group.options : []).map(
+        (option) => {
+          const rawAdjustment =
+            option?.priceAdjustment ?? option?.priceDelta;
+          const serializedOption = {
+            name: String(option?.name ?? option?.label ?? "").trim(),
+            priceAdjustment:
+              rawAdjustment === "" ||
+              rawAdjustment === null ||
+              rawAdjustment === undefined
+                ? 0
+                : Number(rawAdjustment),
+          };
+          const optionId = option?._id || option?.id;
+          if (isMongoId(optionId)) serializedOption._id = optionId;
+          return serializedOption;
+        }
+      ),
+    };
+    const groupId = group?._id || group?.id;
+    if (isMongoId(groupId)) serializedGroup._id = groupId;
+    return serializedGroup;
+  });
+
+const serializeSpecialRequestConfig = (config = {}) => ({
+  enabled: config.enabled !== false,
+  label: String(config.label || "備註或特殊需求").trim(),
+  maxLength: Math.min(300, Math.max(1, Number(config.maxLength) || 200)),
+});
+
 const getStoredUser = (storage, key) => {
   try {
     const value = storage.getItem(key);
@@ -30,13 +68,6 @@ const getStoredSellerUser = () => {
   return localUser?.user?.role === "seller" ? localUser : null;
 };
 
-const getCurrentUser = () => getQrUser() || getLocalUser() || null;
-
-const getTableNumber = () => {
-  const currentUser = getCurrentUser();
-  return currentUser?.tableNumber || currentUser?.user?.tableNumber || null;
-};
-
 const getSellerJwtHeaders = () => ({
   Authorization: "jwt " + (getStoredSellerUser()?.token || ""),
 });
@@ -46,12 +77,28 @@ const getBuyerJwtHeaders = () => ({
 });
 
 class ProductService {
-  post(title, description, price, type, image) {
+  post(
+    title,
+    description,
+    price,
+    type,
+    image,
+    optionGroups = [],
+    specialRequestConfig = {}
+  ) {
     const formData = new FormData();
     formData.append("title", title);
     formData.append("description", description || "");
     formData.append("price", price);
     formData.append("type", type);
+    formData.append(
+      "optionGroups",
+      JSON.stringify(serializeOptionGroups(optionGroups))
+    );
+    formData.append(
+      "specialRequestConfig",
+      JSON.stringify(serializeSpecialRequestConfig(specialRequestConfig))
+    );
     if (image) {
       formData.append("image", image);
     }
@@ -84,7 +131,12 @@ class ProductService {
         : currentUser?.sellerId || user?.qrSeller || null;
 
     if (sellerId) {
-      return this.get(sellerId);
+      return axios.get(API_URL + "/menu/" + sellerId, {
+        headers:
+          user?.role === "seller"
+            ? getSellerJwtHeaders()
+            : getBuyerJwtHeaders(),
+      });
     }
 
     return Promise.resolve({ data: [] });
@@ -102,10 +154,20 @@ class ProductService {
     });
   }
 
-  enroll(_id, quantity = 1) {
+  enroll(_id, customization = {}) {
+    const {
+      quantity = 1,
+      selections = [],
+      specialRequest = "",
+    } = customization;
+
     return axios.post(
       API_URL + "/enroll/" + _id,
-      { quantity, tableNumber: getTableNumber() },
+      {
+        quantity,
+        selections,
+        specialRequest,
+      },
       {
         headers: getBuyerJwtHeaders(),
       }
@@ -130,12 +192,29 @@ class ProductService {
     });
   }
 
-  updateProductWithImage(_id, title, description, price, type, image) {
+  updateProductWithImage(
+    _id,
+    title,
+    description,
+    price,
+    type,
+    image,
+    optionGroups = [],
+    specialRequestConfig = {}
+  ) {
     const formData = new FormData();
     formData.append("title", title);
     formData.append("description", description || "");
     formData.append("price", price);
     formData.append("type", type);
+    formData.append(
+      "optionGroups",
+      JSON.stringify(serializeOptionGroups(optionGroups))
+    );
+    formData.append(
+      "specialRequestConfig",
+      JSON.stringify(serializeSpecialRequestConfig(specialRequestConfig))
+    );
 
     if (image) {
       formData.append("image", image);
@@ -155,6 +234,15 @@ class ProductService {
     });
   }
 
+  deleteCartLine(productId, lineItemId) {
+    return axios.delete(
+      API_URL + "/cart/" + productId + "/" + lineItemId,
+      {
+        headers: getBuyerJwtHeaders(),
+      }
+    );
+  }
+
   deleteSellerOrder(buyerId) {
     return axios.delete(API_URL + "/sellerOrder/" + buyerId, {
       headers: getSellerJwtHeaders(),
@@ -167,6 +255,15 @@ class ProductService {
     });
   }
 
+  deleteSellerOrderBatch(orderBatchId) {
+    return axios.delete(
+      API_URL + "/sellerOrder/batch/" + orderBatchId,
+      {
+        headers: getSellerJwtHeaders(),
+      }
+    );
+  }
+
   updateEnrolledQuantity(_id, quantity) {
     return axios.patch(
       API_URL + "/quantity/" + _id,
@@ -177,10 +274,20 @@ class ProductService {
     );
   }
 
-  submitOrder() {
+  updateCartLineQuantity(productId, lineItemId, quantity) {
+    return axios.patch(
+      API_URL + "/cart/" + productId + "/" + lineItemId,
+      { quantity },
+      {
+        headers: getBuyerJwtHeaders(),
+      }
+    );
+  }
+
+  submitOrder(checkoutToken) {
     return axios.patch(
       API_URL + "/submitOrder",
-      {},
+      { checkoutToken },
       {
         headers: getBuyerJwtHeaders(),
       }
@@ -188,4 +295,6 @@ class ProductService {
   }
 }
 
-export default new ProductService();
+const productService = new ProductService();
+
+export default productService;

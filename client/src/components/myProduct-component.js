@@ -1,257 +1,261 @@
-import React,{useState,useEffect} from "react";
-import {useNavigate, useSearchParams} from "react-router-dom";
-import ProductService from "../services/product.service";
-import { UPLOADS_URL } from "../services/product.service";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
-const MyProductComponent = ({currentUser,setCurrentUser}) => {
-    const navigate=useNavigate();
-    const [searchParams] = useSearchParams();
-    const selectedType = searchParams.get("type");
-    const handleTakeToLogin = () => {
-        navigate('/login');
+import ProductService, { UPLOADS_URL } from "../services/product.service";
+
+const formatPrice = (value) =>
+  Number(value || 0).toLocaleString("zh-TW", {
+    maximumFractionDigits: 2,
+  });
+
+const MyProductComponent = ({ currentUser }) => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const selectedType = searchParams.get("type") || "";
+  const [products, setProducts] = useState([]);
+  const [searchInput, setSearchInput] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (!currentUser?.user || currentUser.user.role !== "seller") {
+      setLoading(false);
+      return;
     }
-    const postProduct = () => {
-    navigate("/postProduct");
-  };
-    let [searchResult,setSearchResult]=useState(null)
-    let [searchInput,setSearchInput]=useState('')  
-    
-    
-    useEffect(()=>{
-        let _id;
-        if (currentUser){
-            _id = currentUser.user._id;
-            if(currentUser.user.role=="seller"){
-                ProductService.get(_id)
-                .then((data) => {
-                     let result = data.data;
 
-          if (selectedType) {
-            result = result.filter(
-              (product) => (product.type || "").trim() === selectedType
-            );
-          }
-                    setSearchResult(result);
-                })
-                .catch((e)=>{
-                    console.log(e);
-                })
-            } else if(currentUser.user.role=="buyer"){
-                console.log("買家")
-                ProductService.getEnrolledProduct(_id)
-                .then((data)=>{
-                    setSearchResult(data.data);
-                }).catch((e)=>{
-                    console.log(e);
-                })
-            }
-        }
-    }, [currentUser, selectedType]    )
+    let active = true;
+    setLoading(true);
+    setMessage("");
 
-    const handleModify = (productId) => {
-        navigate(`/modifyProduct/${productId}`); 
-        };
-    const handleChangeInput =(e) =>{
-        setSearchInput(e.target.value)
-    }
-    
-    const handleSearch =  () => {       
-        const keyword = searchInput.trim();
-        if (!currentUser) return;
-
-        ProductService.get(currentUser.user._id)
-          .then((data) => {
-        const myProducts = data.data;
-        
-        if (!keyword) {
-          setSearchResult(myProducts);
-          return;
-        }
-
-        const filteredProducts = myProducts.filter((product) =>
-          product.title.toLowerCase().includes(keyword)
-        );
-
-        setSearchResult(filteredProducts);
+    ProductService.get(currentUser.user._id)
+      .then((response) => {
+        if (active) setProducts(response.data || []);
       })
-      .catch((e) => {
-        console.log(e);
+      .catch((error) => {
+        console.error(error);
+        if (active) setMessage("餐點載入失敗，請稍後再試。");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
       });
-        }
-    const handleDelete = (productId) => {
-    if (!window.confirm("確定要刪除這個商品嗎？")) return;
 
-    
-
-    ProductService.deleteProduct(productId)
-        .then(() => {
-        window.alert("刪除成功");
-        setSearchResult((prev) => prev.filter((p) => p._id !== productId));
-        })
-        .catch((e) => {
-        console.log(e);
-        window.alert("刪除失敗");
-        });
+    return () => {
+      active = false;
     };
+  }, [currentUser]);
 
+  const visibleProducts = useMemo(() => {
+    const keyword = searchInput.trim().toLocaleLowerCase("zh-TW");
 
-    return (<div className="product-page">
-    {!currentUser && (
-            <div>
-                <p>您必須先登入</p>
-                <button 
-                className="btn btn-primary btn-lg"
-                onClick={handleTakeToLogin}>回到登入頁面</button>
-            </div>
-        )}   
+    return products.filter((product) => {
+      const matchesType =
+        !selectedType || String(product.type || "").trim() === selectedType;
+      const matchesKeyword =
+        !keyword ||
+        [product.title, product.type, product.description]
+          .filter(Boolean)
+          .some((value) =>
+            String(value).toLocaleLowerCase("zh-TW").includes(keyword)
+          );
 
-    
-    <div className="search input-group mb-3" style={{ maxWidth: "60rem" , margin: "0 auto"}}>
-        <input 
-        type="text" 
-        className="form-control"
-        onChange={handleChangeInput}
-        />
-        <button onClick={handleSearch} className="btn btn-primary" style={{minWidth: "8rem"}}>搜尋商品</button>
-    </div>
+      return matchesType && matchesKeyword;
+    });
+  }, [products, searchInput, selectedType]);
 
-        
-    {currentUser && searchResult  && (
-        <div style={{display:"flex",flexWrap:"wrap"}} >
-            {searchResult.map((product)=>{
-                return (<div
-  className="card product-card"
-  style={{ width: "80rem", margin: "0 auto" , marginTop: "1rem"}}
->
-  <div className="card-body">
-    <div
-      className="product-card-layout"
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "stretch",
-        gap: "1.5rem",
-      }}
-    >
-      {/* 左半部：按鈕 + 資訊 + 描述 */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "stretch",
-          gap: "3rem",
-        }}
-      >
-        {/* 最左：三按鈕 */}
-        <div
-          className="product-info-column seller-product-actions"
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-            minWidth: "8rem",
-          }}
-        >
-          <button
-            className="btn btn-info"
-            onClick={() => navigate(`/buyerInfo/${product._id}`)}
-          >
-            買家資訊
-          </button>
+  const handleDelete = async (productId, title) => {
+    if (!window.confirm(`確定要刪除「${title}」嗎？`)) return;
 
-          <button
-            className="btn btn-warning"
-            onClick={() => handleModify(product._id)}
-          >
-            修改餐點
-          </button>
+    try {
+      await ProductService.deleteProduct(productId);
+      setProducts((current) =>
+        current.filter((product) => product._id !== productId)
+      );
+      setMessage("品項已刪除。");
+    } catch (error) {
+      console.error(error);
+      setMessage("刪除失敗，請稍後再試。");
+    }
+  };
 
-          <button
-            className="btn btn-danger"
-            onClick={() => handleDelete(product._id)}
-          >
-            刪除餐點
-          </button>
+  if (!currentUser) {
+    return (
+      <main className="app-page">
+        <div className="app-page__inner">
+          <section className="ui-empty">
+            <h1>請先登入</h1>
+            <p>登入店家帳號後即可管理餐點。</p>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => navigate("/login")}
+            >
+              前往登入
+            </button>
+          </section>
         </div>
+      </main>
+    );
+  }
 
-        {/* 中間：名稱 / 價格 / 數量 */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-            minWidth: "3rem",
-          }}
-        >
-          <p style={{ margin: 0 }} className="card-text">
-            餐點名稱: {product.title}
-          </p>
-
-          <p style={{ margin: 0 }}>
-            餐點價格: {product.price}
-          </p>
-
-          <p style={{ margin: 0 }}>
-            需求數量: {product.buyer.reduce((t, b) => t + (Number(b.quantity) || 0), 0)}
-          </p>
+  if (currentUser.user.role !== "seller") {
+    return (
+      <main className="app-page">
+        <div className="app-page__inner">
+          <div className="alert alert-warning">只有店家帳號可以管理餐點。</div>
         </div>
+      </main>
+    );
+  }
 
-        {/* 再右：描述 */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-          }}
-        >
-          <p style={{ margin: 0 }} className="card-text">
-            餐點描述: {product.description}
-          </p>
-        </div>
-      </div>
+  return (
+    <main className="app-page seller-catalog-page">
+      <div className="app-page__inner">
+        <header className="app-page-header">
+          <div>
+            <p className="ui-eyebrow">店家後台</p>
+            <h1>{selectedType || "餐點管理"}</h1>
+            <p>
+              管理顧客看得到的品項、價格與調整選項，共 {products.length} 個品項。
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => navigate("/postProduct")}
+          >
+            ＋ 新增品項
+          </button>
+        </header>
 
-      {/* 最右：圖片 */}
-      <div
-        className="product-image-wrap seller-product-image-wrap"
-        style={{
-          width: "20rem",
-          flexShrink: 0,
-        }}
-      >
-        {product.image ? (
-          <img
-            className="product-image seller-product-image"
-            src={`${UPLOADS_URL}/${product.image}`}
-            alt={product.title}
-            style={{
-              width: "100%",
-              height: "10rem",
-              objectFit: "cover",
-              borderRadius: "0.5rem",
-            }}
-          />
+        <section className="ui-toolbar" aria-label="搜尋品項">
+          <label className="ui-search">
+            <span className="ui-search-icon" aria-hidden="true">
+              ⌕
+            </span>
+            <input
+              type="search"
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="搜尋品項名稱、分類或說明"
+              aria-label="搜尋品項"
+            />
+          </label>
+          <span className="ui-toolbar-result">
+            顯示 {visibleProducts.length} 個品項
+          </span>
+        </section>
+
+        {message && (
+          <div
+            className={`alert ${
+              message.includes("已刪除") ? "alert-success" : "alert-warning"
+            }`}
+          >
+            {message}
+          </div>
+        )}
+
+        {loading ? (
+          <section className="ui-status" aria-live="polite">
+            <span className="ui-spinner" aria-hidden="true" />
+            <p>餐點載入中…</p>
+          </section>
+        ) : visibleProducts.length === 0 ? (
+          <section className="ui-empty">
+            <span className="ui-empty-icon" aria-hidden="true">
+              🍽
+            </span>
+            <h2>{searchInput || selectedType ? "找不到符合的品項" : "還沒有品項"}</h2>
+            <p>
+              {searchInput || selectedType
+                ? "請調整搜尋內容或切換其他分類。"
+                : "新增第一個品項後，顧客就能在點餐頁看到。"}
+            </p>
+            {!searchInput && !selectedType && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => navigate("/postProduct")}
+              >
+                新增第一個品項
+              </button>
+            )}
+          </section>
         ) : (
-          <div className="product-image seller-product-image product-image-placeholder" />
+          <section className="seller-catalog-grid">
+            {visibleProducts.map((product) => {
+              const requestedQuantity = (product.buyer || []).reduce(
+                (total, buyer) => total + (Number(buyer.quantity) || 0),
+                0
+              );
+              const optionGroupCount = (product.optionGroups || []).filter(
+                (group) => (group.options || []).length > 0
+              ).length;
+
+              return (
+                <article className="seller-product-card" key={product._id}>
+                  {product.image && (
+                    <div className="seller-product-card__media">
+                      <img
+                        src={`${UPLOADS_URL}/${product.image}`}
+                        alt={product.title}
+                      />
+                    </div>
+                  )}
+
+                  <div className="seller-product-card__body">
+                    <div className="seller-product-card__heading">
+                      <span className="ui-pill">{product.type}</span>
+                      <strong>NT$ {formatPrice(product.price)}</strong>
+                    </div>
+                    <h2>{product.title}</h2>
+                    <p className="seller-product-card__description">
+                      {product.description || "尚未填寫品項說明"}
+                    </p>
+
+                    <dl className="seller-product-card__meta">
+                      <div>
+                        <dt>調整步驟</dt>
+                        <dd>{optionGroupCount} 組</dd>
+                      </div>
+                      <div>
+                        <dt>購物車數量</dt>
+                        <dd>{requestedQuantity}</dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  <div className="seller-product-card__actions">
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={() => navigate(`/buyerInfo/${product._id}`)}
+                    >
+                      買家資訊
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline-primary"
+                      onClick={() => navigate(`/modifyProduct/${product._id}`)}
+                    >
+                      修改
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline-danger"
+                      onClick={() => handleDelete(product._id, product.title)}
+                    >
+                      刪除
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </section>
         )}
       </div>
-    </div>
-  </div>
-</div>
-                
-            )
-            
-        })            
-            
-            }
-           
-        </div>    
-        )}
-        <div className="text-center" style={{ marginTop: "2rem" }}>
-          <button style={{ minWidth: "8rem" }} className="btn btn-primary" onClick={postProduct}>
-            新增餐點
-          </button>
-        </div>
-    </div>    )}
-
-
+    </main>
+  );
+};
 
 export default MyProductComponent;

@@ -6,7 +6,9 @@ const path=require('path');
 dotenv.config({ path: path.join(__dirname, ".env") });
 const authRoute=require('./routes').auth;
 const productRoute=require('./routes').product;
+const paymentRoute=require('./routes').payment;
 const User=require('./models/user-model');
+const Payment=require('./models/payment-model');
 const passport=require('passport');
 require('./config/passport')(passport);
 app.use(passport.initialize());
@@ -29,6 +31,7 @@ app.use(
     '/api/product'/*,
     passport.authenticate('jwt', { session: false })*/
     ,productRoute)
+app.use('/api/payment', paymentRoute);
 
 const startServer = async () => {
     try {
@@ -36,6 +39,7 @@ const startServer = async () => {
             process.env.MONGODB_URI || "mongodb://localhost:27017/mernDB"
         );
         await User.init();
+        await Payment.init();
         console.log("連結到MongoDB");
 
         app.listen(port,()=>{

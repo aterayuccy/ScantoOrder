@@ -75,8 +75,14 @@ const RegisterComponent = ({ setCurrentUser }) => {
   return (
     <main className="auth-entry-page">
       <section className="auth-entry-panel">
+        <h1 className="auth-entry-title">
+          Scan to Order
+          <br />
+          <span className="auth-entry-subtitle">掃描點餐</span>
+        </h1>
+
         <form className="auth-entry-card" onSubmit={handleRegister}>
-          <h1 className="auth-entry-heading">建立帳號</h1>
+          <h2 className="auth-entry-heading">建立帳號</h2>
 
           {message && <div className="alert alert-danger">{message}</div>}
 

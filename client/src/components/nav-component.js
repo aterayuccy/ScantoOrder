@@ -1,137 +1,196 @@
-import {useEffect,useState}from "react";
-import { Link , useLocation } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+
 import AuthService from "../services/auth.service";
 import ProductService from "../services/product.service";
 
-const NavComponent = ({currentUser,setCurrentUser}) => {
+const getInitial = (username = "") =>
+  Array.from(String(username).trim())[0]?.toUpperCase() || "?";
+
+const NavComponent = ({ currentUser }) => {
   const [types, setTypes] = useState([]);
+  const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
-  // const [searchParams] = useSearchParams();
-  // const selectedType = searchParams.get("type");
+  const user = currentUser?.user;
+  const isSeller = user?.role === "seller";
+  const selectedType = useMemo(
+    () => new URLSearchParams(location.search).get("type") || "",
+    [location.search]
+  );
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname, location.search]);
+
   useEffect(() => {
     if (!currentUser) {
       setTypes([]);
       return;
     }
 
+    let active = true;
     ProductService.getMenuProducts(currentUser)
-      .then((res) => {
-        const uniqueTypes = [
+      .then((response) => {
+        if (!active) return;
+        setTypes([
           ...new Set(
-            res.data
-              .map((product) => (product.type || "").trim())
-              .filter((type) => type !== "")
+            (response.data || [])
+              .map((product) => String(product.type || "").trim())
+              .filter(Boolean)
           ),
-        ];
-
-        setTypes(uniqueTypes);
+        ]);
       })
-      .catch((e) => console.log(e));
-  }, [currentUser, location.pathname]);
+      .catch((error) => {
+        console.error(error);
+        if (active) setTypes([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentUser]);
+
+  const isActive = (path) =>
+    location.pathname === path ||
+    (path !== "/" && location.pathname.startsWith(`${path}/`));
+
+  const buyerNavigation = () => AuthService.markQrBuyerNavigation();
 
   return (
-    <div>
-      <nav>
-        <nav className="navbar navbar-expand-lg navbar-light bg-light">
-          <div className="container-fluid">
-            <button
-              className="navbar-toggler"
-              type="button"
-              data-bs-toggle="collapse"
-              data-bs-target="#navbarNav"
-              aria-controls="navbarNav"
-              aria-expanded="false"
-              aria-label="Toggle navigation"
-            >
-              <span className="navbar-toggler-icon"></span>
-            </button>
+    <header className="app-header">
+      <div className="app-nav-shell">
+        <Link
+          className="app-brand"
+          to={isSeller ? "/myProduct" : "/"}
+          onClick={isSeller ? undefined : buyerNavigation}
+        >
+          <span className="app-brand-mark" aria-hidden="true">
+            S
+          </span>
+          <span className="app-brand-copy">
+            <strong>Scan to Order</strong>
+            <small>掃描點餐</small>
+          </span>
+        </Link>
 
-            <div className="collapse navbar-collapse w-100" id="navbarNav">
-              <ul className="navbar-nav"> 
-                {currentUser  && currentUser.user.role=="seller" &&
-                <li className="nav-item">
-                  <Link className="nav-link" to="/profile">
-                    個人頁面
-                  </Link>
-                </li>}
-                
-                {currentUser  &&  currentUser.user.role=="buyer"  && 
-                <li className="nav-item">
-                  <Link className="nav-link active" to="/" onClick={() => AuthService.markQrBuyerNavigation()}>
-                    全部餐點
-                  </Link>
-                </li>    }
+        <button
+          type="button"
+          className="app-nav-toggle"
+          aria-label={menuOpen ? "關閉選單" : "開啟選單"}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((current) => !current)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
 
-                {currentUser  &&  currentUser.user.role=="buyer"  && 
-                types.map((type) => (
-                <li className="nav-item" key={type}>
-                  <Link className="nav-link" to={`/?type=${type}`} onClick={() => AuthService.markQrBuyerNavigation()}>
-                    {type}
-                  </Link>
-                </li>
-              ))   }   
-
-              {currentUser  &&  currentUser.user.role=="seller"  && 
-               <li className="nav-item">
-                  <Link className="nav-link active" to="/myProduct">
-                    全部餐點
-                  </Link>
-                </li>}    
-
-                {currentUser  &&  currentUser.user.role=="seller"  && 
-                types.map((type) => (
-                <li className="nav-item" key={type}>
-                  <Link className="nav-link" to={`/myProduct/?type=${type}`}>
-                    {type}
-                  </Link>
-                </li>
-              ))   }    
-              </ul>
-
-
-              <ul className="navbar-nav ms-auto">
-                 {!currentUser &&
-                <li className="nav-item">
-                  <Link className="nav-link" to="/register">
-                    註冊會員
-                  </Link>
-                </li>}
-
-                {!currentUser &&
-                <li className="nav-item">
-                  <Link className="nav-link" to="/login">
-                    會員登入
-                  </Link>
-                </li>}   
-
-              {currentUser && currentUser.user.role == 'seller' &&
-                <li className="nav-item">
-                  <Link className="nav-link" to="/qrcode">
-                    QRCODE
-                  </Link>
-                </li>}
-                
-              {currentUser && currentUser.user.role == 'seller' &&
-              <li className="nav-item">
-                <Link className="nav-link" to="/order">
-                  訂單資訊
+        <div className={`app-nav-content${menuOpen ? " is-open" : ""}`}>
+          <nav className="app-nav-main" aria-label="主要導覽">
+            {isSeller ? (
+              <>
+                <Link
+                  className={`app-nav-link${
+                    isActive("/myProduct") ? " is-active" : ""
+                  }`}
+                  to="/myProduct"
+                >
+                  餐點管理
                 </Link>
-              </li>}  
-              
+                <Link
+                  className={`app-nav-link${
+                    isActive("/postProduct") ? " is-active" : ""
+                  }`}
+                  to="/postProduct"
+                >
+                  新增品項
+                </Link>
+                <Link
+                  className={`app-nav-link${
+                    isActive("/order") ? " is-active" : ""
+                  }`}
+                  to="/order"
+                >
+                  訂單
+                </Link>
+                <Link
+                  className={`app-nav-link${
+                    isActive("/qrcode") ? " is-active" : ""
+                  }`}
+                  to="/qrcode"
+                >
+                  QR Code
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  className={`app-nav-link${
+                    isActive("/") ? " is-active" : ""
+                  }`}
+                  to="/"
+                  onClick={buyerNavigation}
+                >
+                  全部餐點
+                </Link>
+                <Link
+                  className={`app-nav-link${
+                    isActive("/product") ? " is-active" : ""
+                  }`}
+                  to="/product"
+                >
+                  購物車
+                </Link>
+              </>
+            )}
+          </nav>
 
-              {currentUser && currentUser.user.role == 'buyer' &&
-                <li className="nav-item">
-                  <Link className="nav-link" to="/product">
-                    購買紀錄
-                  </Link>
-                </li>}
+          <Link
+            className={`app-profile-link${
+              isActive("/profile") ? " is-active" : ""
+            }`}
+            to="/profile"
+            title="個人頁面"
+          >
+            <span className="app-profile-avatar" aria-hidden="true">
+              {getInitial(user?.username)}
+            </span>
+            <span className="app-profile-copy">
+              <strong>{user?.username}</strong>
+              <small>{isSeller ? "店家帳號" : "顧客帳號"}</small>
+            </span>
+          </Link>
+        </div>
+      </div>
 
-              </ul>
-            </div>
+      {types.length > 0 && (
+        <nav className="app-category-bar" aria-label="餐點分類">
+          <div className="app-category-scroll">
+            <Link
+              className={`app-category-chip${!selectedType ? " is-active" : ""}`}
+              to={isSeller ? "/myProduct" : "/"}
+              onClick={isSeller ? undefined : buyerNavigation}
+            >
+              全部
+            </Link>
+            {types.map((type) => (
+              <Link
+                className={`app-category-chip${
+                  selectedType === type ? " is-active" : ""
+                }`}
+                key={type}
+                to={`${
+                  isSeller ? "/myProduct/" : "/"
+                }?type=${encodeURIComponent(type)}`}
+                onClick={isSeller ? undefined : buyerNavigation}
+              >
+                {type}
+              </Link>
+            ))}
           </div>
         </nav>
-      </nav>
-    </div>
+      )}
+    </header>
   );
 };
 

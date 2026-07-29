@@ -7,7 +7,6 @@ const API_URL = `${API_BASE_URL}/api/user`;
 const LOCAL_USER_KEY = "user";
 const QR_USER_KEY = "qrUser";
 const SELLER_USER_KEY = "sellerUser";
-const QR_BUYER_NAV_KEY = "qrBuyerNavigation";
 
 const getStoredUser = (storage, key) => {
   try {
@@ -45,34 +44,21 @@ const getStoredSellerUser = () => {
 const isBuyerPage = () => {
   const pathname = window.location.pathname;
 
-  return pathname === "/" || pathname === "/product" || pathname === "/submit";
+  return (
+    pathname === "/" ||
+    pathname === "/product" ||
+    pathname === "/submit" ||
+    pathname === "/payment/line-pay"
+  );
 };
-const isHomePage = () => window.location.pathname === "/";
 const isAuthPage = () =>
   window.location.pathname === "/login" ||
   window.location.pathname === "/register";
-const takeQrBuyerNavigation = () => {
-  const isQrBuyerNavigation = sessionStorage.getItem(QR_BUYER_NAV_KEY) === "1";
-
-  if (isQrBuyerNavigation) {
-    sessionStorage.removeItem(QR_BUYER_NAV_KEY);
-  }
-
-  return isQrBuyerNavigation;
-};
 const getCurrentSessionUser = () => {
   const sellerUser = getStoredSellerUser();
   const qrUser = getQrUser();
 
   if (isAuthPage()) {
-    return null;
-  }
-
-  if (isHomePage() && !takeQrBuyerNavigation()) {
-    if (qrUser) {
-      sessionStorage.removeItem(QR_USER_KEY);
-    }
-
     return null;
   }
 
@@ -105,6 +91,9 @@ class AuthService {
   }
 
   logout() {
+    sessionStorage.removeItem("submittedOrder");
+    sessionStorage.removeItem("pendingCheckoutToken");
+    sessionStorage.removeItem("pendingPaymentOrder");
     if (sessionStorage.getItem(QR_USER_KEY)) {
       sessionStorage.removeItem(QR_USER_KEY);
     } else {
@@ -125,16 +114,20 @@ class AuthService {
   }
 
   setQrUser(user) {
+    sessionStorage.removeItem("submittedOrder");
+    sessionStorage.removeItem("pendingCheckoutToken");
+    sessionStorage.removeItem("pendingPaymentOrder");
     sessionStorage.setItem(QR_USER_KEY, JSON.stringify(user));
   }
 
   markQrBuyerNavigation() {
-    if (sessionStorage.getItem(QR_USER_KEY)) {
-      sessionStorage.setItem(QR_BUYER_NAV_KEY, "1");
-    }
+    // QR 顧客身分會保留到分頁關閉或登出，不需額外導覽旗標。
   }
 
   clearQrUser() {
+    sessionStorage.removeItem("submittedOrder");
+    sessionStorage.removeItem("pendingCheckoutToken");
+    sessionStorage.removeItem("pendingPaymentOrder");
     sessionStorage.removeItem(QR_USER_KEY);
   }
 

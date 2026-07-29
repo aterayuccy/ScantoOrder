@@ -6,6 +6,9 @@
   "scripts": {
     "migrate:auth": "node scripts/migrate-auth-users.js",
     "test:auth": "node scripts/verify-auth-flow.js",
+    "test:options": "node scripts/verify-product-options.js",
+    "test:product-flow": "node scripts/verify-product-flow.js",
+    "test:payment": "node scripts/verify-payment-flow.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
