@@ -2,6 +2,7 @@ const express= require('express');
 const app=express();
 const mongoose=require('mongoose');
 const dotenv=require('dotenv');
+const fs=require('fs');
 const path=require('path');
 dotenv.config({ path: path.join(__dirname, ".env") });
 const authRoute=require('./routes').auth;
@@ -9,6 +10,7 @@ const productRoute=require('./routes').product;
 const paymentRoute=require('./routes').payment;
 const User=require('./models/user-model');
 const Payment=require('./models/payment-model');
+const uploadsDirectory=require('./uploads');
 const passport=require('passport');
 require('./config/passport')(passport);
 app.use(passport.initialize());
@@ -26,12 +28,32 @@ app.use(cors());
 
 app.use('/api/user',authRoute);
 
-app.use('/uploads', express.static('uploads'));
+app.get('/health', (req, res) => {
+    res.status(200).send({
+        status: "healthy",
+        uptime: process.uptime(),
+    });
+});
+
+app.use('/uploads', express.static(uploadsDirectory));
 app.use(
     '/api/product'/*,
     passport.authenticate('jwt', { session: false })*/
     ,productRoute)
 app.use('/api/payment', paymentRoute);
+
+const clientBuildPath = path.join(__dirname, "..", "client", "build");
+const clientIndexPath = path.join(clientBuildPath, "index.html");
+
+if (fs.existsSync(clientIndexPath)) {
+    app.use(express.static(clientBuildPath));
+    app.use((req, res, next) => {
+        if (req.method !== "GET" || req.path.startsWith("/api/")) {
+            return next();
+        }
+        return res.sendFile(clientIndexPath);
+    });
+}
 
 const startServer = async () => {
     try {

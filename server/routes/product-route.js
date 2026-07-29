@@ -8,6 +8,7 @@ const passport = require("passport");
 const router = require("express").Router();
 const Product = require("../models").product;
 const Payment = require("../models").payment;
+const uploadsDirectory = require("../uploads");
 const { productValidation } = require("../validation");
 const {
   ProductOptionError,
@@ -30,7 +31,7 @@ const allowedImageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"
 
 const storage = multer.diskStorage({
   destination(req, file, callback) {
-    callback(null, "uploads/");
+    callback(null, uploadsDirectory);
   },
   filename(req, file, callback) {
     callback(
@@ -97,7 +98,7 @@ const uploadProductImage = (req, res, next) => {
 const removeUploadedFile = async (file) => {
   if (!file?.filename) return;
   await fs.promises
-    .unlink(path.join("uploads", file.filename))
+    .unlink(path.join(uploadsDirectory, file.filename))
     .catch(() => {});
 };
 
