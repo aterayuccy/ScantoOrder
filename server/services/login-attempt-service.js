@@ -7,6 +7,14 @@ const DEFAULT_IP_LIMIT = 25;
 const hashKey = (value) =>
   crypto.createHash("sha256").update(String(value)).digest("hex");
 
+class LoginAttemptStoreError extends Error {
+  constructor(message = "登入保護服務暫時無法使用") {
+    super(message);
+    this.name = "LoginAttemptStoreError";
+    this.statusCode = 503;
+  }
+}
+
 class MemoryAttemptStore {
   constructor({ maximumEntries = 6000 } = {}) {
     this.maximumEntries = maximumEntries;
@@ -107,12 +115,14 @@ class LoginAttemptService {
     windowMs = DEFAULT_WINDOW_MS,
     usernameLimit = DEFAULT_USERNAME_LIMIT,
     ipLimit = DEFAULT_IP_LIMIT,
+    failureMode = "memory",
   } = {}) {
     this.store = store || fallbackStore;
     this.fallbackStore = fallbackStore;
     this.windowMs = windowMs;
     this.usernameLimit = usernameLimit;
     this.ipLimit = ipLimit;
+    this.failureMode = failureMode === "reject" ? "reject" : "memory";
     this.usingFallback = !store;
   }
 
@@ -130,6 +140,10 @@ class LoginAttemptService {
       return await operation(this.store);
     } catch (error) {
       if (this.store === this.fallbackStore) throw error;
+      if (this.failureMode === "reject") {
+        console.error("Redis login limiter unavailable:", error.message);
+        throw new LoginAttemptStoreError();
+      }
       console.error(
         "Redis unavailable; login limiter is using local memory:",
         error.message
@@ -181,10 +195,12 @@ const buildLoginAttemptService = (environment = process.env) => {
     usernameLimit:
       Number(environment.LOGIN_ATTEMPT_LIMIT) || DEFAULT_USERNAME_LIMIT,
     ipLimit: Number(environment.IP_LOGIN_ATTEMPT_LIMIT) || DEFAULT_IP_LIMIT,
+    failureMode: environment.REDIS_FAILURE_MODE,
   });
 };
 
 module.exports = {
+  LoginAttemptStoreError,
   LoginAttemptService,
   MemoryAttemptStore,
   RedisAttemptStore,

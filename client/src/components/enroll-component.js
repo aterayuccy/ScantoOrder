@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import AuthEntryComponent from "./auth-entry-component";
-import ProductService, { UPLOADS_URL } from "../services/product.service";
+import ProductService, {
+  getProductImageUrl,
+} from "../services/product.service";
 
 const EnrollComponent = ({ currentUser, setCurrentUser }) => {
   const navigate = useNavigate();
@@ -196,7 +198,7 @@ const EnrollComponent = ({ currentUser, setCurrentUser }) => {
                     {product.image && (
                       <img
                         className="product-image"
-                        src={`${UPLOADS_URL}/${product.image}`}
+                        src={getProductImageUrl(product.image)}
                         alt={product.title}
                         style={{
                           width: "100%",

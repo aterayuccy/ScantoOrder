@@ -70,6 +70,7 @@ const isBuyerPage = () => {
 
   return (
     pathname === "/" ||
+    pathname === "/profile" ||
     pathname === "/product" ||
     pathname === "/submit" ||
     pathname === "/payment/line-pay"

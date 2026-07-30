@@ -4,7 +4,9 @@ const {
   buildProductUpdateFields,
 } = require("../services/product-input-service");
 const {
+  deleteStoredImage,
   removeUploadedFile,
+  storeUploadedImage,
   verifyUploadedImage,
 } = require("../services/product-image-service");
 const { requireSeller, sameId } = require("../middlewares/authorization");
@@ -121,11 +123,13 @@ const getProduct = async (req, res, next) => {
 };
 
 const createProduct = async (req, res, next) => {
+  let storedImage;
   try {
     await verifyUploadedImage(req.file);
+    storedImage = await storeUploadedImage(req.file);
     const product = await Product.create({
       ...buildProductFields(req.body || {}),
-      image: req.file ? req.file.filename : "",
+      ...storedImage,
       seller: req.user._id,
     });
     return res.send({
@@ -133,37 +137,61 @@ const createProduct = async (req, res, next) => {
       savedProduct: product,
     });
   } catch (error) {
-    await removeUploadedFile(req.file);
+    if (storedImage?.image) {
+      await deleteStoredImage(storedImage);
+    } else {
+      await removeUploadedFile(req.file);
+    }
     return next(error);
   }
 };
 
 const updateProduct = async (req, res, next) => {
+  let storedImage;
   try {
     await verifyUploadedImage(req.file);
-    const product = await Product.findById(req.params._id);
+    const product = await Product.findById(req.params._id).select(
+      "+imagePublicId"
+    );
     if (!product) return res.status(404).send("找不到品項");
     if (!sameId(product.seller, req.user._id)) {
       return res.status(403).send("無法修改其他店家的品項");
     }
 
     Object.assign(product, buildProductUpdateFields(req.body || {}, product));
-    if (req.file) product.image = req.file.filename;
+    const previousImage = {
+      image: product.image,
+      imagePublicId: product.imagePublicId,
+      imageStorage: product.imageStorage,
+    };
+    if (req.file) {
+      storedImage = await storeUploadedImage(req.file);
+      Object.assign(product, storedImage);
+    }
     await product.save();
+    if (storedImage?.image) {
+      await deleteStoredImage(previousImage);
+    }
 
     return res.send({
       message: "品項修改成功",
       updatedProduct: product,
     });
   } catch (error) {
-    await removeUploadedFile(req.file);
+    if (storedImage?.image) {
+      await deleteStoredImage(storedImage);
+    } else {
+      await removeUploadedFile(req.file);
+    }
     return next(error);
   }
 };
 
 const deleteProduct = async (req, res, next) => {
   try {
-    const product = await Product.findById(req.params._id);
+    const product = await Product.findById(req.params._id).select(
+      "+imagePublicId"
+    );
     if (!product) return res.status(404).send("找不到品項");
     if (!sameId(product.seller, req.user._id)) {
       return res.status(403).send("無法刪除其他店家的品項");
@@ -175,6 +203,7 @@ const deleteProduct = async (req, res, next) => {
     }
 
     await product.deleteOne();
+    await deleteStoredImage(product);
     return res.send({ message: "品項刪除成功" });
   } catch (error) {
     return next(error);

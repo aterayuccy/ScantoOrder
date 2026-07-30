@@ -10,6 +10,7 @@ const {
 } = require("../services/auth-token-service");
 const {
   buildLoginAttemptService,
+  LoginAttemptStoreError,
 } = require("../services/login-attempt-service");
 
 const loginAttempts = buildLoginAttemptService();
@@ -55,6 +56,9 @@ const login = async (req, res) => {
       user: toPublicUser(user),
     });
   } catch (error) {
+    if (error instanceof LoginAttemptStoreError) {
+      return res.status(error.statusCode).send(error.message);
+    }
     console.error("login error:", error);
     return res.status(500).send("登入服務暫時無法使用");
   }

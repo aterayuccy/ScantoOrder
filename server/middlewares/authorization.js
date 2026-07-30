@@ -18,8 +18,16 @@ const sellerOnly = (req, res, next) => {
   next();
 };
 
+const buyerOnly = (req, res, next) => {
+  if (!req.user?.isBuyer?.()) {
+    return res.status(403).send("只有顧客帳號可以執行此操作");
+  }
+  return next();
+};
+
 module.exports = {
   authenticate,
+  buyerOnly,
   requireSeller,
   sameId,
   sellerOnly,

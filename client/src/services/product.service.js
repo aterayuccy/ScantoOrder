@@ -8,6 +8,12 @@ const API_BASE_URL =
 const API_URL = `${API_BASE_URL}/api/product`;
 
 export const UPLOADS_URL = `${API_BASE_URL}/uploads`;
+export const getProductImageUrl = (image) => {
+  const value = String(image || "").trim();
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+  return `${UPLOADS_URL}/${encodeURIComponent(value)}`;
+};
 
 const isMongoId = (value) => /^[a-f\d]{24}$/i.test(String(value || ""));
 
