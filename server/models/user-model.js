@@ -26,6 +26,39 @@ const userSchema = new Schema(
       enum: ["buyer", "seller"],
       required: true,
     },
+    tokenVersion: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
+    recoveryCodeHash: {
+      type: String,
+      default: undefined,
+      select: false,
+    },
+    recoveryCodeCreatedAt: {
+      type: Date,
+      default: undefined,
+      select: false,
+    },
+    acceptingOrders: {
+      type: Boolean,
+      default: true,
+    },
+    paymentQrImage: {
+      type: String,
+      default: "",
+    },
+    paymentQrImageStorage: {
+      type: String,
+      enum: ["local", "cloudinary"],
+      default: "local",
+    },
+    paymentQrImagePublicId: {
+      type: String,
+      default: "",
+      select: false,
+    },
     tableNumber: {
       type: Number,
       default: null,

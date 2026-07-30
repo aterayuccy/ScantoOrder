@@ -16,6 +16,10 @@ services:
         generateValue: true
       - key: MONGODB_URI
         sync: false
+      - key: IMAGE_STORAGE_PROVIDER
+        value: cloudinary
+      - key: CLOUDINARY_URL
+        sync: false
       - key: LINE_PAY_ENV
         value: sandbox
       - key: LINE_PAY_API_VERSION

@@ -78,7 +78,8 @@ const isBuyerPage = () => {
 };
 const isAuthPage = () =>
   window.location.pathname === "/login" ||
-  window.location.pathname === "/register";
+  window.location.pathname === "/register" ||
+  window.location.pathname === "/forgot-password";
 const getCurrentSessionUser = () => {
   const sellerUser = getStoredSellerUser();
   const qrUser = getQrUser();
@@ -132,6 +133,87 @@ class AuthService {
     return axios.post(API_URL + "/register", {
       username,
       password,
+    });
+  }
+
+  resetPassword(username, recoveryCode, newPassword) {
+    return axios.post(API_URL + "/forgot-password", {
+      username,
+      recoveryCode,
+      newPassword,
+    });
+  }
+
+  changePassword(currentPassword, newPassword) {
+    return axios.post(
+      API_URL + "/change-password",
+      { currentPassword, newPassword },
+      {
+        headers: {
+          Authorization: "jwt " + getSellerToken(),
+        },
+      }
+    );
+  }
+
+  regenerateRecoveryCode(password) {
+    return axios.post(
+      API_URL + "/recovery-code",
+      { password },
+      {
+        headers: {
+          Authorization: "jwt " + getSellerToken(),
+        },
+      }
+    );
+  }
+
+  deleteAccount(password) {
+    return axios.delete(API_URL + "/account", {
+      headers: {
+        Authorization: "jwt " + getSellerToken(),
+      },
+      data: { password },
+    });
+  }
+
+  getSellerSettings() {
+    return axios.get(API_URL + "/settings", {
+      headers: {
+        Authorization: "jwt " + getSellerToken(),
+      },
+    });
+  }
+
+  getStoreSettings(sellerId, currentUser) {
+    return axios.get(API_URL + "/store/" + encodeURIComponent(sellerId), {
+      headers: {
+        Authorization:
+          "jwt " +
+          (currentUser?.user?.role === "seller"
+            ? getSellerToken(currentUser)
+            : getQrUser()?.token || ""),
+      },
+    });
+  }
+
+  updateSellerSettings({
+    acceptingOrders,
+    paymentQrImage,
+    removePaymentQr = false,
+  }) {
+    const formData = new FormData();
+    if (typeof acceptingOrders === "boolean") {
+      formData.append("acceptingOrders", String(acceptingOrders));
+    }
+    if (paymentQrImage) formData.append("image", paymentQrImage);
+    if (removePaymentQr) formData.append("removePaymentQr", "true");
+
+    return axios.patch(API_URL + "/settings", formData, {
+      headers: {
+        Authorization: "jwt " + getSellerToken(),
+        "Content-Type": "multipart/form-data",
+      },
     });
   }
 

@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import ProductService, {
   getProductImageUrl,
 } from "../services/product.service";
+import AuthService from "../services/auth.service";
 import AuthEntryComponent from "./auth-entry-component";
 import ProductCustomizeModal from "./product-customize-modal";
 
@@ -17,6 +18,9 @@ const MenuComponent = ({ currentUser, setCurrentUser }) => {
   const [adding, setAdding] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [storeSettings, setStoreSettings] = useState({
+    acceptingOrders: true,
+  });
 
   const filterProducts = useCallback(
     (products) => {
@@ -41,8 +45,20 @@ const MenuComponent = ({ currentUser, setCurrentUser }) => {
     }
 
     setLoading(true);
-    ProductService.getMenuProducts(currentUser)
-      .then((response) => setMenuProducts(response.data || []))
+    const user = currentUser.user;
+    const sellerId =
+      user?.role === "seller"
+        ? user._id
+        : currentUser.sellerId || user?.qrSeller;
+
+    Promise.all([
+      ProductService.getMenuProducts(currentUser),
+      AuthService.getStoreSettings(sellerId, currentUser),
+    ])
+      .then(([menuResponse, settingsResponse]) => {
+        setMenuProducts(menuResponse.data || []);
+        setStoreSettings(settingsResponse.data);
+      })
       .catch((error) => {
         console.error(error);
         setMessage(
@@ -58,6 +74,16 @@ const MenuComponent = ({ currentUser, setCurrentUser }) => {
 
   const handleConfirm = async (customization) => {
     if (!selectedProduct) return;
+    if (
+      !storeSettings.acceptingOrders ||
+      selectedProduct.isAvailable === false
+    ) {
+      throw new Error(
+        !storeSettings.acceptingOrders
+          ? "店家目前暫停接單"
+          : "此品項目前暫時售完"
+      );
+    }
     setAdding(true);
     setMessage("");
 
@@ -79,6 +105,14 @@ const MenuComponent = ({ currentUser, setCurrentUser }) => {
 
   const handleDirectAdd = async (product) => {
     if (!product || adding) return;
+    if (!storeSettings.acceptingOrders || product.isAvailable === false) {
+      setMessage(
+        !storeSettings.acceptingOrders
+          ? "店家目前暫停接單"
+          : "此品項目前暫時售完"
+      );
+      return;
+    }
 
     setAdding(true);
     setMessage("");
@@ -139,6 +173,12 @@ const MenuComponent = ({ currentUser, setCurrentUser }) => {
         </div>
       )}
 
+      {!storeSettings.acceptingOrders && (
+        <div className="alert alert-warning" role="status">
+          店家目前暫停接單，仍可查看菜單。
+        </div>
+      )}
+
       {loading ? (
         <p className="empty-state">菜單載入中…</p>
       ) : visibleProducts.length === 0 ? (
@@ -155,7 +195,9 @@ const MenuComponent = ({ currentUser, setCurrentUser }) => {
             return (
               <article
                 key={product._id}
-                className="card product-card menu-product-card"
+                className={`card product-card menu-product-card${
+                  product.isAvailable === false ? " is-sold-out" : ""
+                }`}
               >
                 <div className="card-body product-card-layout">
                   <div className="product-info-column">
@@ -182,7 +224,11 @@ const MenuComponent = ({ currentUser, setCurrentUser }) => {
                       <button
                         className="btn btn-primary"
                         type="button"
-                        disabled={adding}
+                        disabled={
+                          adding ||
+                          !storeSettings.acceptingOrders ||
+                          product.isAvailable === false
+                        }
                         onClick={() => {
                           setMessage("");
                           if (groupCount === 0) {
@@ -192,7 +238,11 @@ const MenuComponent = ({ currentUser, setCurrentUser }) => {
                           }
                         }}
                       >
-                        {adding ? "處理中…" : "加入購物車"}
+                        {product.isAvailable === false
+                          ? "暫時售完"
+                          : adding
+                            ? "處理中…"
+                            : "加入購物車"}
                       </button>
                     </div>
                   </div>

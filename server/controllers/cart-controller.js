@@ -1,4 +1,5 @@
 const Product = require("../models/product-model");
+const User = require("../models/user-model");
 const { buildOrderCustomization } = require("../product-options");
 const { sameId } = require("../middlewares/authorization");
 
@@ -20,6 +21,15 @@ const enrollProduct = async (req, res, next) => {
     if (!product) return res.status(404).send("找不到品項");
     if (!sameId(product.seller, req.user.qrSeller)) {
       return res.status(403).send("無法加入其他店家的品項");
+    }
+    if (product.isAvailable === false) {
+      return res.status(409).send("此品項目前暫時售完");
+    }
+    const seller = await User.findById(req.user.qrSeller)
+      .select("acceptingOrders")
+      .lean();
+    if (!seller || seller.acceptingOrders === false) {
+      return res.status(409).send("店家目前暫停接單");
     }
 
     const customization = buildOrderCustomization(

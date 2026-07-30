@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useOrderNotifications } from "../notifications/order-notification-context";
 import ProductService from "../services/product.service";
 import PaymentService from "../services/payment.service";
+import AuthService from "../services/auth.service";
 import ProductSelectionSummary from "./product-selection-summary";
 
 const formatDateTime = (value) =>
@@ -16,6 +17,14 @@ const formatDateTime = (value) =>
     second: "2-digit",
     hour12: false,
   });
+
+const ORDER_STATUS_LABELS = {
+  new: "新訂單",
+  accepted: "已接單",
+  preparing: "製作中",
+  completed: "已完成",
+  cancelled: "已取消",
+};
 
 const buildOrderGroups = (products, payments = []) => {
   const groups = {};
@@ -87,6 +96,7 @@ const SellerOrderComponent = ({ currentUser }) => {
   const [loading, setLoading] = useState(true);
   const [completedMap, setCompletedMap] = useState({});
   const [message, setMessage] = useState("");
+  const [acceptingOrders, setAcceptingOrders] = useState(true);
   const [dailyStats, setDailyStats] = useState({
     orderCount: 0,
     orderAmount: 0,
@@ -106,6 +116,11 @@ const SellerOrderComponent = ({ currentUser }) => {
     }
 
     let active = true;
+    AuthService.getSellerSettings()
+      .then((response) => {
+        if (active) setAcceptingOrders(response.data.acceptingOrders);
+      })
+      .catch((error) => console.error("seller settings failed:", error));
     const loadDailyStats = () => {
       PaymentService.getSellerDailyStats()
         .then((response) => {
@@ -181,7 +196,9 @@ const SellerOrderComponent = ({ currentUser }) => {
     if (!window.confirm("確定要將這張訂單標示完成並移除嗎？")) return;
 
     try {
-      if (order.orderBatchId) {
+      if (order.payment && order.orderBatchId) {
+        await PaymentService.updateOrderStatus(order.orderBatchId, "completed");
+      } else if (order.orderBatchId) {
         await ProductService.deleteSellerOrderBatch(order.orderBatchId);
       } else if (order.tableNumber) {
         await ProductService.deleteSellerTableOrder(order.tableNumber);
@@ -194,6 +211,50 @@ const SellerOrderComponent = ({ currentUser }) => {
     } catch (error) {
       console.error(error);
       window.alert("完成訂單失敗，請稍後再試");
+    }
+  };
+
+  const setOrderStatus = async (order, status) => {
+    try {
+      const response = await PaymentService.updateOrderStatus(
+        order.orderBatchId,
+        status
+      );
+      if (["completed", "cancelled"].includes(status)) {
+        setOrders((current) =>
+          current.filter((item) => item.groupKey !== order.groupKey)
+        );
+      } else {
+        updateOrderPayment(order.orderBatchId, response.data.payment);
+      }
+    } catch (error) {
+      console.error(error);
+      window.alert(error.response?.data || "訂單狀態更新失敗");
+    }
+  };
+
+  const cancelOrder = async (order) => {
+    const paidWarning =
+      order.payment?.status === "paid"
+        ? "這張訂單已付款，系統不會自動退款，請由店家另外處理退款。\n\n"
+        : "";
+    if (!window.confirm(`${paidWarning}確定要取消這張訂單嗎？`)) return;
+    await setOrderStatus(order, "cancelled");
+  };
+
+  const toggleAcceptingOrders = async () => {
+    try {
+      const response = await AuthService.updateSellerSettings({
+        acceptingOrders: !acceptingOrders,
+      });
+      setAcceptingOrders(response.data.acceptingOrders);
+      setMessage(
+        response.data.acceptingOrders
+          ? "已恢復接單"
+          : "已暫停接單，顧客目前無法加入購物車或送單"
+      );
+    } catch (error) {
+      setMessage(error.response?.data || "接單狀態更新失敗");
     }
   };
 
@@ -263,6 +324,15 @@ const SellerOrderComponent = ({ currentUser }) => {
           <button
             type="button"
             className={`btn ${
+              acceptingOrders ? "btn-outline-danger" : "btn-success"
+            }`}
+            onClick={toggleAcceptingOrders}
+          >
+            {acceptingOrders ? "暫停接單" : "恢復接單"}
+          </button>
+          <button
+            type="button"
+            className={`btn ${
               notificationsEnabled
                 ? "btn-outline-success"
                 : "btn-outline-secondary"
@@ -288,7 +358,7 @@ const SellerOrderComponent = ({ currentUser }) => {
           <strong>
             NT$ {Number(dailyStats.orderAmount || 0).toLocaleString("zh-TW")}
           </strong>
-          <small>包含店內付款與 LINE Pay</small>
+          <small>包含店內付款、收款碼與 LINE Pay</small>
         </article>
         <article>
           <span>已完成</span>
@@ -331,6 +401,11 @@ const SellerOrderComponent = ({ currentUser }) => {
                         ? `桌號 ${order.tableNumber}`
                         : order.buyerName || `顧客 ${order.buyerId}`}
                     </span>
+                    <span className="order-status-label">
+                      {ORDER_STATUS_LABELS[
+                        order.payment?.orderStatus || "new"
+                      ] || "新訂單"}
+                    </span>
                     <time dateTime={order.submittedAt}>
                       {formatDateTime(order.submittedAt)}
                     </time>
@@ -346,7 +421,9 @@ const SellerOrderComponent = ({ currentUser }) => {
                         <strong>
                           {order.payment.method === "line_pay"
                             ? "LINE Pay"
-                            : "店內付款"}
+                            : order.payment.method === "merchant_qr"
+                              ? "店家收款碼"
+                              : "店內付款"}
                         </strong>
                       </div>
                       <span
@@ -358,7 +435,9 @@ const SellerOrderComponent = ({ currentUser }) => {
                       >
                         {order.payment.status === "paid" ? "已付款" : "待收款"}
                       </span>
-                      {order.payment.status === "pay_at_store" && (
+                      {["pay_at_store", "awaiting_confirmation"].includes(
+                        order.payment.status
+                      ) && (
                         <button
                           type="button"
                           className="btn btn-sm btn-outline-success"
@@ -447,15 +526,56 @@ const SellerOrderComponent = ({ currentUser }) => {
                   })}
                 </div>
 
-                <button
-                  type="button"
-                  className={`btn ${
-                    allCompleted ? "btn-success" : "btn-outline-secondary"
-                  }`}
-                  onClick={() => completeOrder(order)}
-                >
-                  {allCompleted ? "完成此訂單" : "尚有品項未完成"}
-                </button>
+                {order.payment ? (
+                  <div className="order-status-actions">
+                    {(order.payment.orderStatus || "new") === "new" && (
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => setOrderStatus(order, "accepted")}
+                      >
+                        接受訂單
+                      </button>
+                    )}
+                    {order.payment.orderStatus === "accepted" && (
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => setOrderStatus(order, "preparing")}
+                      >
+                        開始製作
+                      </button>
+                    )}
+                    {order.payment.orderStatus === "preparing" && (
+                      <button
+                        type="button"
+                        className={`btn ${
+                          allCompleted ? "btn-success" : "btn-outline-secondary"
+                        }`}
+                        onClick={() => completeOrder(order)}
+                      >
+                        {allCompleted ? "完成此訂單" : "尚有品項未完成"}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-outline-danger"
+                      onClick={() => cancelOrder(order)}
+                    >
+                      取消訂單
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className={`btn ${
+                      allCompleted ? "btn-success" : "btn-outline-secondary"
+                    }`}
+                    onClick={() => completeOrder(order)}
+                  >
+                    {allCompleted ? "完成此訂單" : "尚有品項未完成"}
+                  </button>
+                )}
               </article>
             );
           })}

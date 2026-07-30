@@ -17,8 +17,17 @@ const OrderConfirmationComponent = () => {
   const items = submittedOrder?.orderData || [];
   const payment = submittedOrder?.payment;
   const paymentMethodLabel =
-    payment?.method === "line_pay" ? "LINE Pay" : "店內付款";
-  const paymentStatusLabel = payment?.status === "paid" ? "已付款" : "到店付款";
+    payment?.method === "line_pay"
+      ? "LINE Pay"
+      : payment?.method === "merchant_qr"
+        ? "店家收款碼"
+        : "店內付款";
+  const paymentStatusLabel =
+    payment?.status === "paid"
+      ? "已付款"
+      : payment?.status === "awaiting_confirmation"
+        ? "等待店家確認"
+        : "到店付款";
 
   return (
     <div className="order-summary-page">

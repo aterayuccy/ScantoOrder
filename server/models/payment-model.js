@@ -79,12 +79,12 @@ const paymentSchema = new Schema(
     method: {
       type: String,
       required: true,
-      enum: ["store", "line_pay"],
+      enum: ["store", "line_pay", "merchant_qr"],
     },
     providerMode: {
       type: String,
       required: true,
-      enum: ["store", "mock", "sandbox", "production"],
+      enum: ["store", "mock", "sandbox", "production", "merchant_qr"],
     },
     providerTransactionId: {
       type: String,
@@ -113,11 +113,18 @@ const paymentSchema = new Schema(
         "created",
         "pending",
         "pay_at_store",
+        "awaiting_confirmation",
         "paid",
         "cancelled",
         "failed",
       ],
       default: "created",
+      index: true,
+    },
+    orderStatus: {
+      type: String,
+      enum: ["new", "accepted", "preparing", "completed", "cancelled"],
+      default: "new",
       index: true,
     },
     invoicePreference: {

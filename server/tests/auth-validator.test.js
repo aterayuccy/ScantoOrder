@@ -1,7 +1,9 @@
 const {
+  changePasswordSchema,
   loginSchema,
   qrLoginSchema,
   registerSchema,
+  resetPasswordSchema,
 } = require("../validators/auth-validator");
 
 describe("authentication validators", () => {
@@ -60,6 +62,25 @@ describe("authentication validators", () => {
     const result = qrLoginSchema.validate({
       qrToken: "a".repeat(64),
       clientSessionId: "device_session_1234567890",
+    });
+
+    expect(result.error).toBeUndefined();
+  });
+
+  test("accepts password change with the existing and new password", () => {
+    const result = changePasswordSchema.validate({
+      currentPassword: "OldPassword123",
+      newPassword: "NewPassword456",
+    });
+
+    expect(result.error).toBeUndefined();
+  });
+
+  test("accepts a recovery code password reset", () => {
+    const result = resetPasswordSchema.validate({
+      username: "巷口早餐店",
+      recoveryCode: "A1".repeat(12),
+      newPassword: "NewPassword456",
     });
 
     expect(result.error).toBeUndefined();

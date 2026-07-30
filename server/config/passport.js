@@ -21,6 +21,12 @@ module.exports = (passport) => {
           .select("+guestExpiresAt")
           .exec();
         if (
+          Number(jwt_payload.tokenVersion || 1) !==
+          Number(foundUser?.tokenVersion || 1)
+        ) {
+          return done(null, false);
+        }
+        if (
           foundUser?.role === "buyer" &&
           foundUser.guestExpiresAt &&
           foundUser.guestExpiresAt <= new Date()

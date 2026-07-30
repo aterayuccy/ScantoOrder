@@ -128,6 +128,10 @@ const productSchema = new Schema({
     type: Number,
     required: true,
   },
+  isAvailable: {
+    type: Boolean,
+    default: true,
+  },
   seller: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",

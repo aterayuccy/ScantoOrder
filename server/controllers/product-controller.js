@@ -210,6 +210,28 @@ const deleteProduct = async (req, res, next) => {
   }
 };
 
+const updateProductAvailability = async (req, res, next) => {
+  try {
+    const product = await Product.findById(req.params._id);
+    if (!product) return res.status(404).send("找不到品項");
+    if (!sameId(product.seller, req.user._id)) {
+      return res.status(403).send("無法修改其他店家的品項");
+    }
+    if (typeof req.body.isAvailable !== "boolean") {
+      return res.status(400).send("品項供應狀態格式不正確");
+    }
+
+    product.isAvailable = req.body.isAvailable;
+    await product.save();
+    return res.send({
+      message: product.isAvailable ? "品項已恢復供應" : "品項已設為暫時售完",
+      product,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   createProduct,
   deleteProduct,
@@ -219,5 +241,6 @@ module.exports = {
   getProduct,
   getSellerProducts,
   listProducts,
+  updateProductAvailability,
   updateProduct,
 };

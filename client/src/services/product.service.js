@@ -193,6 +193,14 @@ class ProductService {
     });
   }
 
+  updateAvailability(_id, isAvailable) {
+    return axios.patch(
+      API_URL + "/" + _id + "/availability",
+      { isAvailable },
+      { headers: getSellerJwtHeaders() }
+    );
+  }
+
   updateProduct(_id, data) {
     return axios.patch(API_URL + "/" + _id, data, {
       headers: getSellerJwtHeaders(),

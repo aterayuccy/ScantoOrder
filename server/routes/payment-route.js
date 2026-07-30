@@ -41,5 +41,11 @@ router.patch(
   sellerOnly,
   paymentController.markInvoiceProcessed
 );
+router.patch(
+  "/seller/:orderBatchId/status",
+  authenticate,
+  sellerOnly,
+  paymentController.updateOrderStatus
+);
 
 module.exports = router;

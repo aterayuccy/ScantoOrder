@@ -118,6 +118,26 @@ const MyProductComponent = ({ currentUser }) => {
     }
   };
 
+  const handleAvailability = async (product) => {
+    try {
+      const nextAvailability = product.isAvailable === false;
+      await ProductService.updateAvailability(product._id, nextAvailability);
+      setProducts((current) =>
+        current.map((item) =>
+          item._id === product._id
+            ? { ...item, isAvailable: nextAvailability }
+            : item
+        )
+      );
+      setMessage(
+        nextAvailability ? "品項已恢復供應。" : "品項已設為暫時售完。"
+      );
+    } catch (error) {
+      console.error(error);
+      setMessage("品項供應狀態更新失敗。");
+    }
+  };
+
   if (!currentUser) {
     return (
       <main className="app-page">
@@ -337,7 +357,11 @@ const MyProductComponent = ({ currentUser }) => {
 
                   <div className="seller-product-card__body">
                     <div className="seller-product-card__heading">
-                      <span className="ui-pill">{product.type}</span>
+                      <span className="ui-pill">
+                        {product.isAvailable === false
+                          ? "暫時售完"
+                          : product.type}
+                      </span>
                       <strong>NT$ {formatPrice(product.price)}</strong>
                     </div>
                     <h2>{product.title}</h2>
@@ -358,6 +382,17 @@ const MyProductComponent = ({ currentUser }) => {
                   </div>
 
                   <div className="seller-product-card__actions">
+                    <button
+                      type="button"
+                      className={`btn ${
+                        product.isAvailable === false
+                          ? "btn-outline-success"
+                          : "btn-outline-warning"
+                      }`}
+                      onClick={() => handleAvailability(product)}
+                    >
+                      {product.isAvailable === false ? "恢復供應" : "暫時售完"}
+                    </button>
                     <button
                       type="button"
                       className="btn btn-outline-secondary"

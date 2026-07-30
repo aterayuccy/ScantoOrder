@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 
 const Product = require("../models/product-model");
+const User = require("../models/user-model");
 
 const sameId = (left, right) =>
   Boolean(left && right && String(left) === String(right));
@@ -43,6 +44,27 @@ const getPendingCart = async (user) => {
   }
 
   const products = await getBuyerProducts(user);
+  const seller = await User.findById(user.qrSeller)
+    .select("acceptingOrders")
+    .lean();
+  if (!seller || seller.acceptingOrders === false) {
+    throw new CheckoutError("店家目前暫停接單", 409);
+  }
+  const unavailableProducts = products.filter(
+    (product) =>
+      product.isAvailable === false &&
+      (product.buyer || []).some(
+        (item) => sameId(item.user, user._id) && !item.submittedAt
+      )
+  );
+  if (unavailableProducts.length > 0) {
+    throw new CheckoutError(
+      `下列品項已暫時售完：${unavailableProducts
+        .map((product) => product.title)
+        .join("、")}`,
+      409
+    );
+  }
   const items = products.flatMap((product) =>
     (product.buyer || [])
       .filter((item) => sameId(item.user, user._id) && !item.submittedAt)
