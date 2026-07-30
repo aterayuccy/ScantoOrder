@@ -91,6 +91,20 @@ const markInvoiceProcessed = async (req, res, next) => {
   }
 };
 
+const updateOrderStatus = async (req, res, next) => {
+  try {
+    return res.send(
+      await paymentService.updateOrderStatus(
+        req.user._id,
+        req.params.orderBatchId,
+        req.body.status
+      )
+    );
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   cancel,
   checkout,
@@ -101,4 +115,5 @@ module.exports = {
   listSellerPayments,
   markInvoiceProcessed,
   markStorePaymentPaid,
+  updateOrderStatus,
 };

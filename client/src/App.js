@@ -22,6 +22,7 @@ import OrderComponent from "./components/seller-order-component";
 import QrcodeComponent from "./components/qrcode-component";
 import QRLoginComponent from "./components/qrcode-login-component";
 import LinePayComponent from "./components/line-pay-component";
+import ForgotPasswordComponent from "./components/forgot-password-component";
 
 function AppRoutes() {
   const location = useLocation();
@@ -47,6 +48,7 @@ function AppRoutes() {
           path="login"
           element={<AuthInjectedComponent component={LoginComponent} />}
         />
+        <Route path="forgot-password" element={<ForgotPasswordComponent />} />
 
         <Route element={<AuthenticatedRoute />}>
           <Route

@@ -71,6 +71,10 @@ const CartComponent = ({ currentUser }) => {
   const [invoicePreference, setInvoicePreference] = useState("none");
   const [mobileCarrier, setMobileCarrier] = useState("");
   const [linePayMode, setLinePayMode] = useState("mock");
+  const [storeSettings, setStoreSettings] = useState({
+    acceptingOrders: true,
+    paymentQrImage: "",
+  });
 
   useEffect(() => {
     if (!currentUser?.user) {
@@ -78,10 +82,20 @@ const CartComponent = ({ currentUser }) => {
       return;
     }
 
-    ProductService.getEnrolledProduct(currentUser.user._id)
-      .then((response) => {
-        const lines = buildCartLines(response.data, currentUser.user._id);
+    const sellerId = currentUser.sellerId || currentUser.user.qrSeller || null;
+
+    Promise.all([
+      ProductService.getEnrolledProduct(currentUser.user._id),
+      sellerId
+        ? AuthService.getStoreSettings(sellerId, currentUser)
+        : Promise.resolve({
+            data: { acceptingOrders: true, paymentQrImage: "" },
+          }),
+    ])
+      .then(([cartResponse, settingsResponse]) => {
+        const lines = buildCartLines(cartResponse.data, currentUser.user._id);
         setCartLines(lines);
+        setStoreSettings(settingsResponse.data);
         setQuantities(
           lines.reduce((values, line) => {
             values[line._id] = Number(line.quantity || 1);
@@ -254,6 +268,11 @@ const CartComponent = ({ currentUser }) => {
       </div>
 
       {message && <div className="alert alert-warning">{message}</div>}
+      {!storeSettings.acceptingOrders && (
+        <div className="alert alert-warning">
+          店家目前暫停接單，請稍後再送出訂單。
+        </div>
+      )}
 
       {cartLines.length === 0 ? (
         <div className="empty-state cart-empty-state">
@@ -365,6 +384,39 @@ const CartComponent = ({ currentUser }) => {
                     <small>送出訂單後至櫃檯付款</small>
                   </span>
                 </label>
+                {storeSettings.paymentQrImage && (
+                  <label
+                    className={`checkout-choice${
+                      paymentMethod === "merchant_qr" ? " is-selected" : ""
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="merchant_qr"
+                      checked={paymentMethod === "merchant_qr"}
+                      onChange={() => setPaymentMethod("merchant_qr")}
+                    />
+                    <span>
+                      <strong>掃描店家收款碼</strong>
+                      <small>款項直接進入店家帳戶，由店家人工確認</small>
+                    </span>
+                  </label>
+                )}
+                {paymentMethod === "merchant_qr" &&
+                  storeSettings.paymentQrImage && (
+                    <div className="merchant-qr-payment">
+                      <img
+                        src={getProductImageUrl(storeSettings.paymentQrImage)}
+                        alt="店家收款 QR Code"
+                      />
+                      <strong>應付 NT$ {totalAmount}</strong>
+                      <p>
+                        請使用付款 App
+                        掃描或辨識此圖片，確認金額後完成付款，再按下方按鈕送出訂單。
+                      </p>
+                    </div>
+                  )}
                 <label
                   className={`checkout-choice${
                     paymentMethod === "line_pay" ? " is-selected" : ""
@@ -459,14 +511,16 @@ const CartComponent = ({ currentUser }) => {
             </div>
             <button
               className="btn btn-primary btn-lg"
-              disabled={submitting}
+              disabled={submitting || !storeSettings.acceptingOrders}
               onClick={submit}
             >
               {submitting
                 ? "處理中…"
                 : paymentMethod === "line_pay"
                   ? "前往 LINE Pay"
-                  : "送出訂單"}
+                  : paymentMethod === "merchant_qr"
+                    ? "我已付款並送出訂單"
+                    : "送出訂單"}
             </button>
           </div>
         </>

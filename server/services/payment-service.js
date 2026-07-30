@@ -1,6 +1,8 @@
 const crypto = require("crypto");
 
 const Payment = require("../models/payment-model");
+const Product = require("../models/product-model");
+const User = require("../models/user-model");
 const {
   buildOrderBatchId,
   getPendingCart,
@@ -80,10 +82,14 @@ const summarizeDailyPayments = (payments, date) => {
       0
     ),
     paidCount: payments.filter((payment) => payment.status === "paid").length,
-    pendingStorePaymentCount: payments.filter(
-      (payment) => payment.status === "pay_at_store"
+    pendingStorePaymentCount: payments.filter((payment) =>
+      ["pay_at_store", "awaiting_confirmation"].includes(payment.status)
     ).length,
-    completedCount: payments.filter((payment) => payment.completedAt).length,
+    completedCount: payments.filter(
+      (payment) =>
+        payment.orderStatus === "completed" ||
+        (!payment.orderStatus && payment.completedAt)
+    ).length,
     popularItems,
   };
 };
@@ -96,6 +102,7 @@ const toPublicPayment = (payment) => ({
   amount: payment.amount,
   currency: payment.currency,
   status: payment.status,
+  orderStatus: payment.orderStatus || "new",
   invoicePreference: payment.invoicePreference,
   mobileCarrier: payment.mobileCarrier,
   invoiceStatus: payment.invoiceStatus,
@@ -191,6 +198,20 @@ const createStoreCheckout = async (payment, user, checkoutToken) => {
   };
 };
 
+const createMerchantQrCheckout = async (payment, user, checkoutToken) => {
+  const order = await submitPendingOrder(user, checkoutToken);
+  payment.status = "awaiting_confirmation";
+  payment.orderBatchId = order.orderBatchId;
+  payment.submittedAt = order.submittedAt;
+  await payment.save();
+
+  return {
+    message: "訂單已送出，等待店家確認掃碼付款",
+    payment: toPublicPayment(payment),
+    ...order,
+  };
+};
+
 const createMockLinePayCheckout = async (payment, clientBaseUrl) => {
   payment.status = "pending";
   payment.providerPaymentUrl = `${clientBaseUrl}/payment/line-pay?orderId=${encodeURIComponent(
@@ -233,7 +254,9 @@ const createRealLinePayCheckout = async (payment, items, clientBaseUrl) => {
 
 const createCheckout = async ({ user, body, origin }) => {
   const checkoutToken = normalizeCheckoutToken(body.checkoutToken);
-  const method = body.method === "line_pay" ? "line_pay" : "store";
+  const method = ["line_pay", "merchant_qr"].includes(body.method)
+    ? body.method
+    : "store";
   const invoice = normalizeInvoicePreference(body);
   const checkoutKey = buildOrderBatchId(user._id, checkoutToken);
   const existingPayment = await Payment.findOne({ checkoutKey });
@@ -249,7 +272,21 @@ const createCheckout = async ({ user, body, origin }) => {
     throw new PaymentError("LINE Pay 訂單金額至少需要 NT$ 1");
   }
 
-  const providerMode = method === "store" ? "store" : getLinePayMode();
+  if (method === "merchant_qr") {
+    const seller = await User.findById(user.qrSeller)
+      .select("paymentQrImage")
+      .lean();
+    if (!seller?.paymentQrImage) {
+      throw new PaymentError("店家尚未設定掃碼收款");
+    }
+  }
+
+  const providerMode =
+    method === "store"
+      ? "store"
+      : method === "merchant_qr"
+        ? "merchant_qr"
+        : getLinePayMode();
   const payment = await Payment.create({
     orderId: buildOrderId(),
     checkoutKey,
@@ -265,6 +302,9 @@ const createCheckout = async ({ user, body, origin }) => {
 
   if (method === "store") {
     return createStoreCheckout(payment, user, checkoutToken);
+  }
+  if (method === "merchant_qr") {
+    return createMerchantQrCheckout(payment, user, checkoutToken);
   }
   if (providerMode === "mock") {
     return createMockLinePayCheckout(payment, clientBaseUrl);
@@ -357,7 +397,7 @@ const listSellerPayments = async (sellerId) => {
   const payments = await Payment.find({
     seller: sellerId,
     orderBatchId: { $ne: "" },
-    status: { $in: ["pay_at_store", "paid"] },
+    status: { $in: ["pay_at_store", "awaiting_confirmation", "paid"] },
     completedAt: null,
   })
     .sort({ submittedAt: 1 })
@@ -370,7 +410,8 @@ const getSellerDailyStats = async (sellerId, now = new Date()) => {
   const payments = await Payment.find({
     seller: sellerId,
     orderBatchId: { $ne: "" },
-    status: { $in: ["pay_at_store", "paid"] },
+    status: { $in: ["pay_at_store", "awaiting_confirmation", "paid"] },
+    orderStatus: { $ne: "cancelled" },
     submittedAt: { $gte: start, $lt: end },
   }).lean();
 
@@ -380,7 +421,7 @@ const getSellerDailyStats = async (sellerId, now = new Date()) => {
 const markStorePaymentPaid = async (sellerId, orderBatchId) => {
   const payment = await Payment.findOne({ seller: sellerId, orderBatchId });
   if (!payment) throw new PaymentError("找不到付款資料", 404);
-  if (payment.method !== "store") {
+  if (!["store", "merchant_qr"].includes(payment.method)) {
     throw new PaymentError("LINE Pay 付款由系統自動確認", 409);
   }
 
@@ -388,7 +429,58 @@ const markStorePaymentPaid = async (sellerId, orderBatchId) => {
   payment.paidAt = payment.paidAt || new Date();
   await payment.save();
   return {
-    message: "已確認收到店內付款",
+    message: "已確認收到付款",
+    payment: toPublicPayment(payment),
+  };
+};
+
+const updateOrderStatus = async (sellerId, orderBatchId, nextStatus) => {
+  const allowedStatuses = new Set([
+    "new",
+    "accepted",
+    "preparing",
+    "completed",
+    "cancelled",
+  ]);
+  if (!allowedStatuses.has(nextStatus)) {
+    throw new PaymentError("訂單狀態不正確");
+  }
+
+  const payment = await Payment.findOne({ seller: sellerId, orderBatchId });
+  if (!payment) throw new PaymentError("找不到付款資料", 404);
+
+  const currentStatus = payment.orderStatus || "new";
+  if (["completed", "cancelled"].includes(currentStatus)) {
+    throw new PaymentError("這張訂單已結束，無法再修改", 409);
+  }
+  if (nextStatus === "completed" && payment.status !== "paid") {
+    throw new PaymentError("請先確認已收到付款", 409);
+  }
+
+  payment.orderStatus = nextStatus;
+  if (["completed", "cancelled"].includes(nextStatus)) {
+    payment.completedAt = new Date();
+    if (
+      nextStatus === "cancelled" &&
+      ["pay_at_store", "awaiting_confirmation"].includes(payment.status)
+    ) {
+      payment.status = "cancelled";
+    }
+  }
+  await payment.save();
+
+  if (["completed", "cancelled"].includes(nextStatus)) {
+    await Product.updateMany(
+      {
+        seller: sellerId,
+        "buyer.orderBatchId": orderBatchId,
+      },
+      { $pull: { buyer: { orderBatchId } } }
+    );
+  }
+
+  return {
+    message: nextStatus === "cancelled" ? "訂單已取消" : "訂單狀態已更新",
     payment: toPublicPayment(payment),
   };
 };
@@ -423,4 +515,5 @@ module.exports = {
   normalizeClientBaseUrl,
   summarizeDailyPayments,
   toPublicPayment,
+  updateOrderStatus,
 };

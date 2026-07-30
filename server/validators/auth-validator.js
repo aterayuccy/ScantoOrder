@@ -68,6 +68,48 @@ const loginSchema = Joi.object({
     }),
 });
 
+const changePasswordSchema = Joi.object({
+  currentPassword: Joi.string().max(64).required().messages({
+    "string.empty": "請輸入目前密碼",
+    "string.max": "目前密碼格式不正確",
+    "any.required": "請輸入目前密碼",
+  }),
+  newPassword: password,
+});
+
+const resetPasswordSchema = Joi.object({
+  username,
+  recoveryCode: Joi.string()
+    .trim()
+    .replace(/[\s-]/g, "")
+    .length(24)
+    .hex()
+    .required()
+    .messages({
+      "string.empty": "請輸入救援碼",
+      "string.length": "救援碼格式不正確",
+      "string.hex": "救援碼格式不正確",
+      "any.required": "請輸入救援碼",
+    }),
+  newPassword: password,
+});
+
+const deleteAccountSchema = Joi.object({
+  password: Joi.string().max(64).required().messages({
+    "string.empty": "請輸入密碼確認刪除",
+    "string.max": "密碼格式不正確",
+    "any.required": "請輸入密碼確認刪除",
+  }),
+});
+
+const recoveryCodeSchema = Joi.object({
+  password: Joi.string().max(64).required().messages({
+    "string.empty": "請輸入密碼",
+    "string.max": "密碼格式不正確",
+    "any.required": "請輸入密碼",
+  }),
+});
+
 const qrLoginSchema = Joi.object({
   qrToken: Joi.string().hex().length(64).required().messages({
     "string.empty": "缺少 qrToken",
@@ -102,10 +144,14 @@ const validate = (schema, data) =>
   schema.validate(data, { abortEarly: false, stripUnknown: true });
 
 module.exports = {
+  changePasswordSchema,
+  deleteAccountSchema,
   loginSchema,
   loginValidation: (data) => validate(loginSchema, data),
   qrCodeCountSchema,
   qrLoginSchema,
   registerSchema,
   registerValidation: (data) => validate(registerSchema, data),
+  recoveryCodeSchema,
+  resetPasswordSchema,
 };

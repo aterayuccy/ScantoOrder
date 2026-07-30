@@ -93,6 +93,14 @@ class PaymentService {
       { headers: getSellerHeaders() }
     );
   }
+
+  updateOrderStatus(orderBatchId, status) {
+    return axios.patch(
+      `${API_URL}/seller/${encodeURIComponent(orderBatchId)}/status`,
+      { status },
+      { headers: getSellerHeaders() }
+    );
+  }
 }
 
 const paymentService = new PaymentService();

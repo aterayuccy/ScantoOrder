@@ -66,6 +66,12 @@ router.delete(
 
 router.get("/:_id", authenticate, sellerOnly, productController.getProduct);
 router.patch(
+  "/:_id/availability",
+  authenticate,
+  sellerOnly,
+  productController.updateProductAvailability
+);
+router.patch(
   "/:_id",
   authenticate,
   sellerOnly,

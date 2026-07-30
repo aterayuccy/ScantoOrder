@@ -77,6 +77,10 @@ const AuthEntryComponent = ({ setCurrentUser }) => {
           </button>
 
           <p className="auth-entry-switch">
+            <Link to="/forgot-password">忘記密碼？</Link>
+          </p>
+
+          <p className="auth-entry-switch">
             還沒有帳號？
             <Link to="/register">前往註冊</Link>
           </p>
