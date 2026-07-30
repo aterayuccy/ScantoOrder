@@ -19,8 +19,7 @@ const serializeOptionGroups = (groups) =>
         group?.selectionType === "multiple" ? "multiple" : "single",
       options: (Array.isArray(group?.options) ? group.options : []).map(
         (option) => {
-          const rawAdjustment =
-            option?.priceAdjustment ?? option?.priceDelta;
+          const rawAdjustment = option?.priceAdjustment ?? option?.priceDelta;
           const serializedOption = {
             name: String(option?.name ?? option?.label ?? "").trim(),
             priceAdjustment:
@@ -237,12 +236,9 @@ class ProductService {
   }
 
   deleteCartLine(productId, lineItemId) {
-    return axios.delete(
-      API_URL + "/cart/" + productId + "/" + lineItemId,
-      {
-        headers: getBuyerJwtHeaders(),
-      }
-    );
+    return axios.delete(API_URL + "/cart/" + productId + "/" + lineItemId, {
+      headers: getBuyerJwtHeaders(),
+    });
   }
 
   deleteSellerOrder(buyerId) {
@@ -258,12 +254,9 @@ class ProductService {
   }
 
   deleteSellerOrderBatch(orderBatchId) {
-    return axios.delete(
-      API_URL + "/sellerOrder/batch/" + orderBatchId,
-      {
-        headers: getSellerJwtHeaders(),
-      }
-    );
+    return axios.delete(API_URL + "/sellerOrder/batch/" + orderBatchId, {
+      headers: getSellerJwtHeaders(),
+    });
   }
 
   updateEnrolledQuantity(_id, quantity) {

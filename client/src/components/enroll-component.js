@@ -154,7 +154,10 @@ const EnrollComponent = ({ currentUser, setCurrentUser }) => {
                     </p>
 
                     <div>
-                      <div className="input-group" style={{ maxWidth: "18rem" }}>
+                      <div
+                        className="input-group"
+                        style={{ maxWidth: "18rem" }}
+                      >
                         <input
                           type="number"
                           min="1"
@@ -186,7 +189,10 @@ const EnrollComponent = ({ currentUser, setCurrentUser }) => {
                     </p>
                   </div>
 
-                  <div className="product-image-wrap" style={{ width: "20rem", flexShrink: 0 }}>
+                  <div
+                    className="product-image-wrap"
+                    style={{ width: "20rem", flexShrink: 0 }}
+                  >
                     {product.image && (
                       <img
                         className="product-image"

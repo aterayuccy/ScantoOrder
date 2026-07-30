@@ -3,8 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 const DEFAULT_NOTE_LABEL = "備註或特殊需求";
 const DEFAULT_NOTE_MAX_LENGTH = 200;
 
-const getItemId = (item, fallback) =>
-  String(item?._id ?? item?.id ?? fallback);
+const getItemId = (item, fallback) => String(item?._id ?? item?.id ?? fallback);
 
 const normalizeGroups = (optionGroups) =>
   (Array.isArray(optionGroups) ? optionGroups : [])
@@ -50,9 +49,7 @@ const formatPrice = (value) =>
 const formatAdjustment = (value) => {
   const adjustment = Number(value || 0);
   if (adjustment === 0) return "0 元";
-  return `${adjustment > 0 ? "+" : "−"} ${formatPrice(
-    Math.abs(adjustment)
-  )}`;
+  return `${adjustment > 0 ? "+" : "−"} ${formatPrice(Math.abs(adjustment))}`;
 };
 
 const ProductCustomizeModal = ({
@@ -73,8 +70,7 @@ const ProductCustomizeModal = ({
   const [submitError, setSubmitError] = useState("");
 
   const requestConfig = product?.specialRequestConfig || {};
-  const isNoteEnabled =
-    groups.length > 0 && requestConfig.enabled !== false;
+  const isNoteEnabled = groups.length > 0 && requestConfig.enabled !== false;
   const noteLabel = String(requestConfig.label || DEFAULT_NOTE_LABEL);
   const configuredNoteMaxLength = Number(requestConfig.maxLength);
   const noteMaxLength =
@@ -118,11 +114,15 @@ const ProductCustomizeModal = ({
       ...current,
       [group.id]:
         group.selectionType === "multiple"
-          ? (Array.isArray(current[group.id]) ? current[group.id] : []).includes(
-              optionId
-            )
+          ? (Array.isArray(current[group.id])
+              ? current[group.id]
+              : []
+            ).includes(optionId)
             ? current[group.id].filter((id) => id !== optionId)
-            : [...(Array.isArray(current[group.id]) ? current[group.id] : []), optionId]
+            : [
+                ...(Array.isArray(current[group.id]) ? current[group.id] : []),
+                optionId,
+              ]
           : optionId
             ? [optionId]
             : [],
@@ -182,17 +182,14 @@ const ProductCustomizeModal = ({
     parsedQuantity <= 99
       ? parsedQuantity
       : null;
-  const baseTotal =
-    validQuantity === null ? null : basePrice * validQuantity;
+  const baseTotal = validQuantity === null ? null : basePrice * validQuantity;
   const adjustmentTotal =
     validQuantity === null ? null : selectedAdjustment * validQuantity;
-  const subtotal =
-    validQuantity === null ? null : unitPrice * validQuantity;
+  const subtotal = validQuantity === null ? null : unitPrice * validQuantity;
 
   const validate = () => {
     const nextErrors = {
-      quantity:
-        validQuantity === null ? "數量須為 1 至 99 的整數" : "",
+      quantity: validQuantity === null ? "數量須為 1 至 99 的整數" : "",
       specialRequest:
         isNoteEnabled && specialRequest.length > noteMaxLength
           ? `${noteLabel}不可超過 ${noteMaxLength} 個字`

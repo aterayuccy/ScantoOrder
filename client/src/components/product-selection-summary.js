@@ -25,8 +25,7 @@ const ProductSelectionSummary = ({
         const optionName = String(option?.optionName || "").trim();
         if (!optionName) return;
 
-        const groupName =
-          String(option?.groupName || "").trim() || "品項調整";
+        const groupName = String(option?.groupName || "").trim() || "品項調整";
         let groupIndex = groupIndexes.get(groupName);
 
         if (groupIndex === undefined) {
@@ -55,15 +54,10 @@ const ProductSelectionSummary = ({
 
   return (
     <div
-      className={`product-selection-summary${
-        className ? ` ${className}` : ""
-      }`}
+      className={`product-selection-summary${className ? ` ${className}` : ""}`}
     >
       {groupedOptions.map((group) => (
-        <div
-          key={group.name}
-          className="product-selection-summary__group"
-        >
+        <div key={group.name} className="product-selection-summary__group">
           <span className="product-selection-summary__group-name">
             {group.name}
           </span>

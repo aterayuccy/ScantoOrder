@@ -31,7 +31,9 @@ const OrderComponent = ({ currentUser }) => {
                   ? buyerItem.user
                   : buyerItem.user?._id || "unknown";
               const tableNumber = buyerItem.tableNumber || null;
-              const groupKey = tableNumber ? `table-${tableNumber}` : `buyer-${buyerId}`;
+              const groupKey = tableNumber
+                ? `table-${tableNumber}`
+                : `buyer-${buyerId}`;
 
               if (!grouped[groupKey]) {
                 grouped[groupKey] = {
@@ -50,15 +52,18 @@ const OrderComponent = ({ currentUser }) => {
                 title: product.title,
                 price: Number(product.price || 0),
                 quantity: Number(buyerItem.quantity || 0),
-                orderTime: new Date(buyerItem.submittedAt).toLocaleString("zh-TW", {
-                  year: "numeric",
-                  month: "2-digit",
-                  day: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  second: "2-digit",
-                  hour12: false,
-                }),
+                orderTime: new Date(buyerItem.submittedAt).toLocaleString(
+                  "zh-TW",
+                  {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                    hour12: false,
+                  }
+                ),
               });
             });
           });
@@ -205,7 +210,9 @@ const OrderComponent = ({ currentUser }) => {
                             <input
                               type="checkbox"
                               checked={!!completedMap[key]}
-                              onChange={() => handleCheckChange(groupKey, index)}
+                              onChange={() =>
+                                handleCheckChange(groupKey, index)
+                              }
                             />
                             <span>完成</span>
                           </div>
@@ -220,7 +227,9 @@ const OrderComponent = ({ currentUser }) => {
                     </td>
                     <td>{getOrderTotal(orderGroup.items)}</td>
                     <td>
-                      <strong>{orderGroup.items[0]?.orderTime || "尚未送出"}</strong>
+                      <strong>
+                        {orderGroup.items[0]?.orderTime || "尚未送出"}
+                      </strong>
                     </td>
                     <td>
                       <button

@@ -60,8 +60,8 @@ const QRLoginComponent = ({ setCurrentUser }) => {
           {status === "loading"
             ? "確認桌號"
             : status === "success"
-            ? "可以開始點餐"
-            : "無法進入點餐頁"}
+              ? "可以開始點餐"
+              : "無法進入點餐頁"}
         </h1>
         <p>{message}</p>
         {status === "error" && (

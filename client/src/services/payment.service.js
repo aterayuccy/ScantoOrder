@@ -27,8 +27,7 @@ const getBuyerHeaders = () => {
 const getSellerHeaders = () => {
   const sellerUser = getStoredUser(localStorage, "sellerUser");
   const localUser = getStoredUser(localStorage, "user");
-  const current =
-    sellerUser?.user?.role === "seller" ? sellerUser : localUser;
+  const current = sellerUser?.user?.role === "seller" ? sellerUser : localUser;
   return {
     Authorization: `jwt ${current?.token || ""}`,
   };
@@ -83,9 +82,7 @@ class PaymentService {
 
   markInvoiceProcessed(orderBatchId) {
     return axios.patch(
-      `${API_URL}/seller/${encodeURIComponent(
-        orderBatchId
-      )}/invoice-processed`,
+      `${API_URL}/seller/${encodeURIComponent(orderBatchId)}/invoice-processed`,
       {},
       { headers: getSellerHeaders() }
     );

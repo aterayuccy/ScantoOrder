@@ -102,10 +102,7 @@ const normalizeSpecialRequestConfig = (specialRequestConfig) => {
   return {
     enabled: Boolean(source.enabled),
     label: String(source.label ?? "備註或特殊需求").trim(),
-    maxLength: Math.min(
-      300,
-      Math.max(1, toInteger(source.maxLength, 100))
-    ),
+    maxLength: Math.min(300, Math.max(1, toInteger(source.maxLength, 100))),
   };
 };
 
@@ -196,11 +193,7 @@ const validateProductOptions = (
     }
 
     const maxLength = Number(noteConfig.maxLength);
-    if (
-      !Number.isInteger(maxLength) ||
-      maxLength < 1 ||
-      maxLength > 300
-    ) {
+    if (!Number.isInteger(maxLength) || maxLength < 1 || maxLength > 300) {
       errors.push({
         path: "specialRequestConfig.maxLength",
         message: "備註字數上限必須是 1 到 300 的整數",

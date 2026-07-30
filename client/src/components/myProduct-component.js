@@ -115,7 +115,8 @@ const MyProductComponent = ({ currentUser }) => {
             <p className="ui-eyebrow">店家後台</p>
             <h1>{selectedType || "餐點管理"}</h1>
             <p>
-              管理顧客看得到的品項、價格與調整選項，共 {products.length} 個品項。
+              管理顧客看得到的品項、價格與調整選項，共 {products.length}{" "}
+              個品項。
             </p>
           </div>
           <button
@@ -165,7 +166,9 @@ const MyProductComponent = ({ currentUser }) => {
             <span className="ui-empty-icon" aria-hidden="true">
               🍽
             </span>
-            <h2>{searchInput || selectedType ? "找不到符合的品項" : "還沒有品項"}</h2>
+            <h2>
+              {searchInput || selectedType ? "找不到符合的品項" : "還沒有品項"}
+            </h2>
             <p>
               {searchInput || selectedType
                 ? "請調整搜尋內容或切換其他分類。"

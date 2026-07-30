@@ -36,8 +36,7 @@ const buildCartLines = (products, buyerId) =>
     (product.buyer || [])
       .filter(
         (buyerItem) =>
-          getBuyerId(buyerItem) === String(buyerId) &&
-          !buyerItem.submittedAt
+          getBuyerId(buyerItem) === String(buyerId) && !buyerItem.submittedAt
       )
       .map((buyerItem) => ({
         ...buyerItem,
@@ -49,13 +48,11 @@ const buildCartLines = (products, buyerId) =>
           product.specialRequestConfig?.label ||
           "備註或特殊需求",
         basePrice:
-          buyerItem.basePrice === null ||
-          buyerItem.basePrice === undefined
+          buyerItem.basePrice === null || buyerItem.basePrice === undefined
             ? Number(product.price || 0)
             : Number(buyerItem.basePrice),
         unitPrice:
-          buyerItem.unitPrice === null ||
-          buyerItem.unitPrice === undefined
+          buyerItem.unitPrice === null || buyerItem.unitPrice === undefined
             ? Number(product.price || 0)
             : Number(buyerItem.unitPrice),
       }))
@@ -81,10 +78,7 @@ const CartComponent = ({ currentUser }) => {
 
     ProductService.getEnrolledProduct(currentUser.user._id)
       .then((response) => {
-        const lines = buildCartLines(
-          response.data,
-          currentUser.user._id
-        );
+        const lines = buildCartLines(response.data, currentUser.user._id);
         setCartLines(lines);
         setQuantities(
           lines.reduce((values, line) => {
@@ -110,9 +104,7 @@ const CartComponent = ({ currentUser }) => {
     () =>
       cartLines.reduce(
         (sum, line) =>
-          sum +
-          Number(line.unitPrice || 0) *
-            Number(quantities[line._id] || 1),
+          sum + Number(line.unitPrice || 0) * Number(quantities[line._id] || 1),
         0
       ),
     [cartLines, quantities]
@@ -124,10 +116,7 @@ const CartComponent = ({ currentUser }) => {
   };
 
   const handleQuantityChange = (event, lineItemId) => {
-    const value = Math.min(
-      99,
-      Math.max(1, Number(event.target.value) || 1)
-    );
+    const value = Math.min(99, Math.max(1, Number(event.target.value) || 1));
     setQuantities((current) => ({
       ...current,
       [lineItemId]: value,
@@ -201,16 +190,14 @@ const CartComponent = ({ currentUser }) => {
         return;
       }
 
-      const submittedAt =
-        response.data.submittedAt || payment?.submittedAt;
+      const submittedAt = response.data.submittedAt || payment?.submittedAt;
       sessionStorage.setItem(
         "submittedOrder",
         JSON.stringify({
           orderData: orderSnapshot,
           totalAmount,
           orderTime: formatOrderTime(submittedAt),
-          orderBatchId:
-            response.data.orderBatchId || payment?.orderBatchId,
+          orderBatchId: response.data.orderBatchId || payment?.orderBatchId,
           payment,
         })
       );
@@ -223,9 +210,7 @@ const CartComponent = ({ currentUser }) => {
         sessionStorage.removeItem("pendingCheckoutToken");
       }
       setMessage(
-        typeof data === "string"
-          ? data
-          : data?.message || "訂單送出失敗"
+        typeof data === "string" ? data : data?.message || "訂單送出失敗"
       );
     } finally {
       setSubmitting(false);
@@ -272,10 +257,7 @@ const CartComponent = ({ currentUser }) => {
         <div className="empty-state cart-empty-state">
           <h3>購物車目前是空的</h3>
           <p>回到菜單選擇想要的品項。</p>
-          <button
-            className="btn btn-primary"
-            onClick={goToMenu}
-          >
+          <button className="btn btn-primary" onClick={goToMenu}>
             查看菜單
           </button>
         </div>
@@ -403,8 +385,8 @@ const CartComponent = ({ currentUser }) => {
                     {linePayMode === "mock"
                       ? "目前為作品展示模式，不會實際扣款。"
                       : linePayMode === "sandbox"
-                      ? "目前連接 LINE Pay Sandbox，不會實際扣款。"
-                      : "將前往 LINE Pay 完成真實付款。"}
+                        ? "目前連接 LINE Pay Sandbox，不會實際扣款。"
+                        : "將前往 LINE Pay 完成真實付款。"}
                   </p>
                 )}
               </fieldset>
@@ -430,9 +412,7 @@ const CartComponent = ({ currentUser }) => {
                 </label>
                 <label
                   className={`checkout-choice${
-                    invoicePreference === "mobile_carrier"
-                      ? " is-selected"
-                      : ""
+                    invoicePreference === "mobile_carrier" ? " is-selected" : ""
                   }`}
                 >
                   <input
@@ -440,9 +420,7 @@ const CartComponent = ({ currentUser }) => {
                     name="invoicePreference"
                     value="mobile_carrier"
                     checked={invoicePreference === "mobile_carrier"}
-                    onChange={() =>
-                      setInvoicePreference("mobile_carrier")
-                    }
+                    onChange={() => setInvoicePreference("mobile_carrier")}
                   />
                   <span>
                     <strong>手機條碼載具</strong>
@@ -485,8 +463,8 @@ const CartComponent = ({ currentUser }) => {
               {submitting
                 ? "處理中…"
                 : paymentMethod === "line_pay"
-                ? "前往 LINE Pay"
-                : "送出訂單"}
+                  ? "前往 LINE Pay"
+                  : "送出訂單"}
             </button>
           </div>
         </>

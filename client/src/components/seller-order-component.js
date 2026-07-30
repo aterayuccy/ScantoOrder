@@ -29,7 +29,8 @@ const buildOrderGroups = (products, payments = []) => {
       const buyerId = String(
         buyerItem.user?._id || buyerItem.user || "unknown"
       );
-      const buyerName = buyerItem.user?.username || "";
+      const buyerName =
+        buyerItem.user?.username || buyerItem.buyerUsernameSnapshot || "";
       const tableNumber = buyerItem.tableNumber || null;
       const orderBatchId = buyerItem.orderBatchId || "";
       const legacyKey = `legacy-${tableNumber || buyerId}-${buyerItem.submittedAt}`;
@@ -52,13 +53,11 @@ const buildOrderGroups = (products, payments = []) => {
         _id: buyerItem._id,
         title: buyerItem.titleSnapshot || product.title,
         basePrice:
-          buyerItem.basePrice === null ||
-          buyerItem.basePrice === undefined
+          buyerItem.basePrice === null || buyerItem.basePrice === undefined
             ? Number(product.price || 0)
             : Number(buyerItem.basePrice),
         price:
-          buyerItem.unitPrice === null ||
-          buyerItem.unitPrice === undefined
+          buyerItem.unitPrice === null || buyerItem.unitPrice === undefined
             ? Number(product.price || 0)
             : Number(buyerItem.unitPrice),
         quantity: Number(buyerItem.quantity || 1),
@@ -104,10 +103,7 @@ const SellerOrderComponent = ({ currentUser }) => {
         .then(([productResponse, paymentResponse]) => {
           if (active) {
             setOrders(
-              buildOrderGroups(
-                productResponse.data,
-                paymentResponse.data
-              )
+              buildOrderGroups(productResponse.data, paymentResponse.data)
             );
           }
         })
@@ -176,9 +172,7 @@ const SellerOrderComponent = ({ currentUser }) => {
   const updateOrderPayment = (orderBatchId, payment) => {
     setOrders((current) =>
       current.map((order) =>
-        order.orderBatchId === orderBatchId
-          ? { ...order, payment }
-          : order
+        order.orderBatchId === orderBatchId ? { ...order, payment } : order
       )
     );
   };
@@ -211,10 +205,7 @@ const SellerOrderComponent = ({ currentUser }) => {
     return (
       <div className="product-page">
         <p>請先登入。</p>
-        <button
-          className="btn btn-primary"
-          onClick={() => navigate("/login")}
-        >
+        <button className="btn btn-primary" onClick={() => navigate("/login")}>
           前往登入
         </button>
       </div>
@@ -295,9 +286,7 @@ const SellerOrderComponent = ({ currentUser }) => {
                             : "payment-status-badge--pending"
                         }`}
                       >
-                        {order.payment.status === "paid"
-                          ? "已付款"
-                          : "待收款"}
+                        {order.payment.status === "paid" ? "已付款" : "待收款"}
                       </span>
                       {order.payment.status === "pay_at_store" && (
                         <button
@@ -314,14 +303,12 @@ const SellerOrderComponent = ({ currentUser }) => {
                       <div>
                         <span>發票載具</span>
                         <strong>
-                          {order.payment.invoicePreference ===
-                          "mobile_carrier"
+                          {order.payment.invoicePreference === "mobile_carrier"
                             ? order.payment.mobileCarrier
                             : "不使用載具"}
                         </strong>
                       </div>
-                      {order.payment.invoicePreference ===
-                        "mobile_carrier" && (
+                      {order.payment.invoicePreference === "mobile_carrier" && (
                         <>
                           <span
                             className={`payment-status-badge ${
@@ -338,9 +325,7 @@ const SellerOrderComponent = ({ currentUser }) => {
                             <button
                               type="button"
                               className="btn btn-sm btn-outline-primary"
-                              onClick={() =>
-                                markInvoiceProcessed(order)
-                              }
+                              onClick={() => markInvoiceProcessed(order)}
                             >
                               標示已處理
                             </button>
@@ -374,9 +359,7 @@ const SellerOrderComponent = ({ currentUser }) => {
                           <span className="seller-order-item__quantity">
                             × {item.quantity}
                           </span>
-                          <strong>
-                            NT$ {item.price * item.quantity}
-                          </strong>
+                          <strong>NT$ {item.price * item.quantity}</strong>
                         </label>
                         {Number(item.basePrice) !== Number(item.price) && (
                           <small className="seller-order-item__base-price">

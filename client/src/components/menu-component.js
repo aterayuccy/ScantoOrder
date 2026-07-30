@@ -24,9 +24,7 @@ const MenuComponent = ({ currentUser, setCurrentUser }) => {
           !selectedType || (product.type || "").trim() === selectedType;
         const matchesSearch =
           !keyword ||
-          (product.title || "")
-            .toLocaleLowerCase("zh-TW")
-            .includes(keyword);
+          (product.title || "").toLocaleLowerCase("zh-TW").includes(keyword);
         return matchesType && matchesSearch;
       });
     },
@@ -148,8 +146,7 @@ const MenuComponent = ({ currentUser, setCurrentUser }) => {
           {visibleProducts.map((product) => {
             const groupCount = (product.optionGroups || []).filter((group) =>
               (Array.isArray(group?.options) ? group.options : []).some(
-                (option) =>
-                  String(option?.name ?? option?.label ?? "").trim()
+                (option) => String(option?.name ?? option?.label ?? "").trim()
               )
             ).length;
 
@@ -193,9 +190,7 @@ const MenuComponent = ({ currentUser, setCurrentUser }) => {
                           }
                         }}
                       >
-                        {adding
-                          ? "處理中…"
-                          : "加入購物車"}
+                        {adding ? "處理中…" : "加入購物車"}
                       </button>
                     </div>
                   </div>

@@ -5,11 +5,14 @@
   "main": "index.js",
   "scripts": {
     "migrate:auth": "node scripts/migrate-auth-users.js",
+    "migrate:qr-guests": "node scripts/migrate-qr-guests.js",
     "test:auth": "node scripts/verify-auth-flow.js",
     "test:options": "node scripts/verify-product-options.js",
     "test:product-flow": "node scripts/verify-product-flow.js",
     "test:payment": "node scripts/verify-payment-flow.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch",
+    "lint": "eslint ."
   },
   "author": "",
   "license": "ISC",
@@ -24,6 +27,16 @@
     "multer": "^2.1.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
-    "passport-local": "^1.0.0"
+    "passport-local": "^1.0.0",
+    "redis": "^6.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.8.0",
+    "jest": "^30.4.2",
+    "prettier": "^3.9.6",
+    "supertest": "^7.2.2"
   }
 }

@@ -50,34 +50,34 @@ const LinePayComponent = ({ currentUser }) => {
   const isMock = searchParams.get("mock") === "1";
   const isCancelled = searchParams.get("cancel") === "1";
 
-  const finishPayment = useCallback((response) => {
-    const pendingOrder = readPendingOrder();
-    const paidPayment = response.data.payment;
-    sessionStorage.setItem(
-      "submittedOrder",
-      JSON.stringify({
-        orderData:
-          pendingOrder?.orderData || buildFallbackOrderData(paidPayment),
-        totalAmount: paidPayment.amount,
-        orderTime: formatOrderTime(response.data.submittedAt),
-        orderBatchId: response.data.orderBatchId,
-        payment: paidPayment,
-      })
-    );
-    sessionStorage.removeItem("pendingPaymentOrder");
-    sessionStorage.removeItem("pendingCheckoutToken");
-    navigate("/submit", { replace: true });
-  }, [navigate]);
+  const finishPayment = useCallback(
+    (response) => {
+      const pendingOrder = readPendingOrder();
+      const paidPayment = response.data.payment;
+      sessionStorage.setItem(
+        "submittedOrder",
+        JSON.stringify({
+          orderData:
+            pendingOrder?.orderData || buildFallbackOrderData(paidPayment),
+          totalAmount: paidPayment.amount,
+          orderTime: formatOrderTime(response.data.submittedAt),
+          orderBatchId: response.data.orderBatchId,
+          payment: paidPayment,
+        })
+      );
+      sessionStorage.removeItem("pendingPaymentOrder");
+      sessionStorage.removeItem("pendingCheckoutToken");
+      navigate("/submit", { replace: true });
+    },
+    [navigate]
+  );
 
   const confirmPayment = async () => {
     if (!orderId || confirming) return;
     setConfirming(true);
     setError("");
     try {
-      const response = await PaymentService.confirm(
-        orderId,
-        transactionId
-      );
+      const response = await PaymentService.confirm(orderId, transactionId);
       finishPayment(response);
     } catch (requestError) {
       const data = requestError?.response?.data;
@@ -143,21 +143,12 @@ const LinePayComponent = ({ currentUser }) => {
       .catch((requestError) => {
         const data = requestError?.response?.data;
         setError(
-          typeof data === "string"
-            ? data
-            : data?.message || "無法載入付款資料"
+          typeof data === "string" ? data : data?.message || "無法載入付款資料"
         );
         setLoading(false);
         setConfirming(false);
       });
-  }, [
-    currentUser,
-    finishPayment,
-    isCancelled,
-    isMock,
-    orderId,
-    transactionId,
-  ]);
+  }, [currentUser, finishPayment, isCancelled, isMock, orderId, transactionId]);
 
   if (!currentUser?.user || currentUser.user.role !== "buyer") {
     return (

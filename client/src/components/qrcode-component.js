@@ -77,7 +77,9 @@ const QRCodeComponent = ({ currentUser }) => {
   };
 
   const handleDelete = async (qrCode) => {
-    if (!window.confirm(`確定要刪除桌號 ${qrCode.tableNumber} 的 QR Code 嗎？`)) {
+    if (
+      !window.confirm(`確定要刪除桌號 ${qrCode.tableNumber} 的 QR Code 嗎？`)
+    ) {
       return;
     }
 

@@ -17,7 +17,7 @@ const parseJsonField = (value, fallback, fieldName) => {
 
   try {
     return JSON.parse(value);
-  } catch (error) {
+  } catch {
     throw new ProductOptionError(`${fieldName} 格式不正確`);
   }
 };
@@ -37,11 +37,7 @@ const normalizePriceAdjustment = (value) => {
       ? 0
       : value
   );
-  if (
-    !Number.isInteger(number) ||
-    number < -9999 ||
-    number > 9999
-  ) {
+  if (!Number.isInteger(number) || number < -9999 || number > 9999) {
     throw new ProductOptionError(
       "可點內容的加價／折抵須為 -9999 到 9999 的整數"
     );
@@ -228,7 +224,9 @@ const buildOrderCustomization = (
   );
   const inactiveGroupIds = new Set(
     allProductGroups
-      .filter((group) => !Array.isArray(group.options) || group.options.length === 0)
+      .filter(
+        (group) => !Array.isArray(group.options) || group.options.length === 0
+      )
       .map((group) => String(group._id))
   );
 
@@ -259,9 +257,7 @@ const buildOrderCustomization = (
     selectionsByGroup.delete(groupId);
 
     if (group.selectionType !== "multiple" && selectedIds.length > 1) {
-      throw new ProductOptionError(
-        `「${group.name}」最多選擇一個可點內容`
-      );
+      throw new ProductOptionError(`「${group.name}」最多選擇一個可點內容`);
     }
 
     const optionsById = new Map(
@@ -316,9 +312,7 @@ const buildOrderCustomization = (
     specialRequest,
     unitPrice,
     selectionKey: JSON.stringify([
-      signature.sort(([leftId], [rightId]) =>
-        leftId.localeCompare(rightId)
-      ),
+      signature.sort(([leftId], [rightId]) => leftId.localeCompare(rightId)),
       specialRequest,
     ]),
   };
