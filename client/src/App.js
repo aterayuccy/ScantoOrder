@@ -1,10 +1,15 @@
 import { Route, Routes, BrowserRouter, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import {
+  AuthenticatedRoute,
+  AuthInjectedComponent,
+  RoleRoute,
+} from "./auth/auth-routes";
+import { AuthProvider } from "./auth/auth-context";
 import Layout from "./components/Layout";
 import RegisterComponent from "./components/register-component";
 import LoginComponent from "./components/login-component";
 import ProfileComponent from "./components/profile-component";
-import AuthService from "./services/auth.service";
 import ProductComponent from "./components/cart-component";
 import PostProductComponent from "./components/postProduct-component";
 import EnrollComponent from "./components/menu-component";
@@ -19,11 +24,6 @@ import LinePayComponent from "./components/line-pay-component";
 
 function AppRoutes() {
   const location = useLocation();
-  let [currentUser, setCurrentUser] = useState(AuthService.getCurrentUser());
-
-  useEffect(() => {
-    setCurrentUser(AuthService.getCurrentUser());
-  }, [location.pathname]);
 
   // React Router keeps the previous page's scroll position by default.  Reset
   // it on every page change so a long product form never opens halfway down.
@@ -33,132 +33,74 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route
-        path="/"
-        element={
-          <Layout currentUser={currentUser} setCurrentUser={setCurrentUser} />
-        }
-      >
+      <Route path="/" element={<Layout />}>
         <Route
-          path=""
-          element={
-            <EnrollComponent
-              currentUser={currentUser}
-              setCurrentUser={setCurrentUser}
-            />
-          }
+          index
+          element={<AuthInjectedComponent component={EnrollComponent} />}
         />
         <Route
           path="register"
-          element={<RegisterComponent setCurrentUser={setCurrentUser} />}
+          element={<AuthInjectedComponent component={RegisterComponent} />}
         />
         <Route
           path="login"
-          element={
-            <LoginComponent
-              currentUser={currentUser}
-              setCurrentUser={setCurrentUser}
-            />
-          }
+          element={<AuthInjectedComponent component={LoginComponent} />}
         />
-        <Route
-          path="profile"
-          element={
-            <ProfileComponent
-              currentUser={currentUser}
-              setCurrentUser={setCurrentUser}
-            />
-          }
-        />
-        <Route
-          path="product"
-          element={
-            <ProductComponent
-              currentUser={currentUser}
-              setCurrentUser={setCurrentUser}
-            />
-          }
-        />
-        <Route
-          path="myProduct"
-          element={
-            <MyProductComponent
-              currentUser={currentUser}
-              setCurrentUser={setCurrentUser}
-            />
-          }
-        />
-        <Route
-          path="postProduct"
-          element={
-            <PostProductComponent
-              currentUser={currentUser}
-              setCurrentUser={setCurrentUser}
-            />
-          }
-        />
-        <Route
-          path="buyerInfo/:productId"
-          element={
-            <BuyerInfoComponent
-              currentUser={currentUser}
-              setCurrentUser={setCurrentUser}
-            />
-          }
-        />
-        <Route
-          path="modifyProduct/:productId"
-          element={
-            <ModifyProductComponent
-              currentUser={currentUser}
-              setCurrentUser={setCurrentUser}
-            />
-          }
-        />
-        <Route
-          path="submit"
-          element={
-            <SubmitComponent
-              currentUser={currentUser}
-              setCurrentUser={setCurrentUser}
-            />
-          }
-        />
-        <Route
-          path="order"
-          element={
-            <OrderComponent
-              currentUser={currentUser}
-              setCurrentUser={setCurrentUser}
-            />
-          }
-        />
-        <Route
-          path="qrcode"
-          element={
-            <QrcodeComponent
-              currentUser={currentUser}
-              setCurrentUser={setCurrentUser}
-            />
-          }
-        />
+
+        <Route element={<AuthenticatedRoute />}>
+          <Route
+            path="profile"
+            element={<AuthInjectedComponent component={ProfileComponent} />}
+          />
+        </Route>
+
+        <Route element={<RoleRoute role="buyer" />}>
+          <Route
+            path="product"
+            element={<AuthInjectedComponent component={ProductComponent} />}
+          />
+          <Route
+            path="submit"
+            element={<AuthInjectedComponent component={SubmitComponent} />}
+          />
+          <Route
+            path="payment/line-pay"
+            element={<AuthInjectedComponent component={LinePayComponent} />}
+          />
+        </Route>
+
+        <Route element={<RoleRoute role="seller" />}>
+          <Route
+            path="myProduct"
+            element={<AuthInjectedComponent component={MyProductComponent} />}
+          />
+          <Route
+            path="postProduct"
+            element={<AuthInjectedComponent component={PostProductComponent} />}
+          />
+          <Route
+            path="buyerInfo/:productId"
+            element={<AuthInjectedComponent component={BuyerInfoComponent} />}
+          />
+          <Route
+            path="modifyProduct/:productId"
+            element={
+              <AuthInjectedComponent component={ModifyProductComponent} />
+            }
+          />
+          <Route
+            path="order"
+            element={<AuthInjectedComponent component={OrderComponent} />}
+          />
+          <Route
+            path="qrcode"
+            element={<AuthInjectedComponent component={QrcodeComponent} />}
+          />
+        </Route>
+
         <Route
           path="qr-login"
-          element={
-            <QRLoginComponent
-              currentUser={currentUser}
-              setCurrentUser={setCurrentUser}
-            />
-          }
-        />
-        <Route
-          path="payment/line-pay"
-          element={
-            <LinePayComponent
-              currentUser={currentUser}
-              setCurrentUser={setCurrentUser}
-            />
-          }
+          element={<AuthInjectedComponent component={QRLoginComponent} />}
         />
       </Route>
     </Routes>
@@ -168,7 +110,9 @@ function AppRoutes() {
 function App() {
   return (
     <BrowserRouter>
-      <AppRoutes />
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
     </BrowserRouter>
   );
 }

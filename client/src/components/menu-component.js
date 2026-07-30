@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import ProductService, { UPLOADS_URL } from "../services/product.service";
+import ProductService, {
+  getProductImageUrl,
+} from "../services/product.service";
 import AuthEntryComponent from "./auth-entry-component";
 import ProductCustomizeModal from "./product-customize-modal";
 
@@ -199,7 +201,7 @@ const MenuComponent = ({ currentUser, setCurrentUser }) => {
                     <div className="product-image-wrap">
                       <img
                         className="product-image"
-                        src={`${UPLOADS_URL}/${product.image}`}
+                        src={getProductImageUrl(product.image)}
                         alt={product.title}
                       />
                     </div>

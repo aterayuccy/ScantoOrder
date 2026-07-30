@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import ProductService, { UPLOADS_URL } from "../services/product.service";
+import ProductService, {
+  getProductImageUrl,
+} from "../services/product.service";
 import PaymentService from "../services/payment.service";
 import AuthService from "../services/auth.service";
 import ProductSelectionSummary from "./product-selection-summary";
@@ -274,7 +276,7 @@ const CartComponent = ({ currentUser }) => {
                 {line.productImage && (
                   <div className="cart-line-image-wrap">
                     <img
-                      src={`${UPLOADS_URL}/${line.productImage}`}
+                      src={getProductImageUrl(line.productImage)}
                       alt={line.productTitle}
                     />
                   </div>

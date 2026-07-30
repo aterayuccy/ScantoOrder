@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import ProductService, { UPLOADS_URL } from "../services/product.service";
+import ProductService, {
+  getProductImageUrl,
+} from "../services/product.service";
 
 const formatPrice = (value) =>
   Number(value || 0).toLocaleString("zh-TW", {
@@ -200,7 +202,7 @@ const MyProductComponent = ({ currentUser }) => {
                   {product.image && (
                     <div className="seller-product-card__media">
                       <img
-                        src={`${UPLOADS_URL}/${product.image}`}
+                        src={getProductImageUrl(product.image)}
                         alt={product.title}
                       />
                     </div>

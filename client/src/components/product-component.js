@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import ProductService from "../services/product.service";
-import { UPLOADS_URL } from "../services/product.service";
+import ProductService, {
+  getProductImageUrl,
+} from "../services/product.service";
 
 const getPendingBuyerItem = (product, buyerId) => {
   return (product.buyer || []).find((b) => {
@@ -239,7 +240,7 @@ const ProductComponent = ({ currentUser }) => {
                     {product.image && (
                       <img
                         className="product-image"
-                        src={`${UPLOADS_URL}/${product.image}`}
+                        src={getProductImageUrl(product.image)}
                         alt={product.title}
                         style={{
                           width: "100%",

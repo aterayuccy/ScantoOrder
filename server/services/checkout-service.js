@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 
-const Product = require("./models/product-model");
+const Product = require("../models/product-model");
 
 const sameId = (left, right) =>
   Boolean(left && right && String(left) === String(right));

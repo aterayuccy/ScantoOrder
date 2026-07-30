@@ -144,6 +144,16 @@ const productSchema = new Schema({
     type: String,
     default: "",
   },
+  imageStorage: {
+    type: String,
+    enum: ["local", "cloudinary"],
+    default: "local",
+  },
+  imagePublicId: {
+    type: String,
+    default: "",
+    select: false,
+  },
   optionGroups: {
     type: [optionGroupSchema],
     default: [],
@@ -165,6 +175,13 @@ const productSchema = new Schema({
       max: 300,
       default: 200,
     },
+  },
+});
+
+productSchema.set("toJSON", {
+  transform(_document, result) {
+    delete result.imagePublicId;
+    return result;
   },
 });
 
