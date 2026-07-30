@@ -1,12 +1,7 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { useOrderNotifications } from "../notifications/order-notification-context";
 import ProductService from "../services/product.service";
 import PaymentService from "../services/payment.service";
 import ProductSelectionSummary from "./product-selection-summary";
@@ -86,6 +81,8 @@ const buildOrderGroups = (products, payments = []) => {
 
 const SellerOrderComponent = ({ currentUser }) => {
   const navigate = useNavigate();
+  const { notificationsEnabled, toggleOrderNotifications } =
+    useOrderNotifications();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [completedMap, setCompletedMap] = useState({});
@@ -98,85 +95,8 @@ const SellerOrderComponent = ({ currentUser }) => {
     pendingStorePaymentCount: 0,
     popularItems: [],
   });
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const notificationEnabledRef = useRef(notificationsEnabled);
-  const knownOrderKeysRef = useRef(new Set());
-  const hasLoadedOrdersRef = useRef(false);
-  const audioContextRef = useRef(null);
-
-  const playNotificationSound = useCallback(() => {
-    try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) return;
-
-      const audioContext = audioContextRef.current || new AudioContext();
-      audioContextRef.current = audioContext;
-      if (audioContext.state === "suspended") audioContext.resume();
-
-      const oscillator = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
-      gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
-      gain.gain.exponentialRampToValueAtTime(
-        0.22,
-        audioContext.currentTime + 0.02
-      );
-      gain.gain.exponentialRampToValueAtTime(
-        0.0001,
-        audioContext.currentTime + 0.35
-      );
-      oscillator.connect(gain);
-      gain.connect(audioContext.destination);
-      oscillator.start();
-      oscillator.stop(audioContext.currentTime + 0.36);
-    } catch (error) {
-      console.error("new order sound failed:", error);
-    }
-  }, []);
-
-  const notifyNewOrders = useCallback(
-    (newOrders) => {
-      if (!notificationEnabledRef.current || newOrders.length === 0) return;
-
-      playNotificationSound();
-      if ("Notification" in window && Notification.permission === "granted") {
-        const firstOrder = newOrders[0];
-        const location = firstOrder.tableNumber
-          ? `桌號 ${firstOrder.tableNumber}`
-          : firstOrder.buyerName || "新顧客";
-        const extra =
-          newOrders.length > 1 ? `，另有 ${newOrders.length - 1} 張訂單` : "";
-        new Notification("Scan to Order 新訂單", {
-          body: `${location} 已送出訂單${extra}`,
-          tag: `new-order-${Date.now()}`,
-        });
-      }
-    },
-    [playNotificationSound]
-  );
-
-  const toggleOrderNotifications = async () => {
-    if (notificationsEnabled) {
-      notificationEnabledRef.current = false;
-      setNotificationsEnabled(false);
-      setMessage("新訂單提示音與瀏覽器通知已關閉。");
-      return;
-    }
-
-    let permission = "unsupported";
-    if ("Notification" in window) {
-      permission = await Notification.requestPermission();
-    }
-
-    notificationEnabledRef.current = true;
-    setNotificationsEnabled(true);
-    playNotificationSound();
-    setMessage(
-      permission === "granted"
-        ? "新訂單提示已開啟；這是提示音測試。"
-        : "提示音已開啟，但瀏覽器通知未獲允許。"
-    );
+  const handleToggleOrderNotifications = async () => {
+    setMessage(await toggleOrderNotifications());
   };
 
   useEffect(() => {
@@ -186,8 +106,6 @@ const SellerOrderComponent = ({ currentUser }) => {
     }
 
     let active = true;
-    knownOrderKeysRef.current = new Set();
-    hasLoadedOrdersRef.current = false;
     const loadDailyStats = () => {
       PaymentService.getSellerDailyStats()
         .then((response) => {
@@ -211,19 +129,7 @@ const SellerOrderComponent = ({ currentUser }) => {
               productResponse.data,
               paymentResponse.data
             );
-            const newOrders = hasLoadedOrdersRef.current
-              ? nextOrders.filter(
-                  (order) => !knownOrderKeysRef.current.has(order.groupKey)
-                )
-              : [];
-
-            nextOrders.forEach((order) =>
-              knownOrderKeysRef.current.add(order.groupKey)
-            );
-            hasLoadedOrdersRef.current = true;
             setOrders(nextOrders);
-            notifyNewOrders(newOrders);
-            if (newOrders.length > 0) loadDailyStats();
           }
         })
         .catch((error) => {
@@ -244,7 +150,7 @@ const SellerOrderComponent = ({ currentUser }) => {
       window.clearInterval(intervalId);
       window.clearInterval(statsIntervalId);
     };
-  }, [currentUser, notifyNewOrders]);
+  }, [currentUser]);
 
   const orderCount = useMemo(() => orders.length, [orders]);
 
@@ -361,7 +267,7 @@ const SellerOrderComponent = ({ currentUser }) => {
                 ? "btn-outline-success"
                 : "btn-outline-secondary"
             }`}
-            onClick={toggleOrderNotifications}
+            onClick={handleToggleOrderNotifications}
           >
             {notificationsEnabled ? "🔔 新訂單提示已開啟" : "開啟新訂單提示"}
           </button>
