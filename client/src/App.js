@@ -6,6 +6,7 @@ import {
   RoleRoute,
 } from "./auth/auth-routes";
 import { AuthProvider } from "./auth/auth-context";
+import { OrderNotificationProvider } from "./notifications/order-notification-context";
 import Layout from "./components/Layout";
 import RegisterComponent from "./components/register-component";
 import LoginComponent from "./components/login-component";
@@ -111,7 +112,9 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <OrderNotificationProvider>
+          <AppRoutes />
+        </OrderNotificationProvider>
       </AuthProvider>
     </BrowserRouter>
   );
