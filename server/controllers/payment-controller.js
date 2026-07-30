@@ -57,6 +57,14 @@ const listSellerPayments = async (req, res, next) => {
   }
 };
 
+const getSellerDailyStats = async (req, res, next) => {
+  try {
+    return res.send(await paymentService.getSellerDailyStats(req.user._id));
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const markStorePaymentPaid = async (req, res, next) => {
   try {
     return res.send(
@@ -89,6 +97,7 @@ module.exports = {
   confirm,
   getBuyerPayment,
   getMode,
+  getSellerDailyStats,
   listSellerPayments,
   markInvoiceProcessed,
   markStorePaymentPaid,

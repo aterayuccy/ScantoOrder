@@ -4,6 +4,66 @@ import { QRCodeCanvas } from "qrcode.react";
 
 import AuthService from "../services/auth.service";
 
+const buildQrCardCanvas = (qrCanvas, tableNumber, shopName) => {
+  const scale = 2;
+  const padding = 32 * scale;
+  const shopNameHeight = 38 * scale;
+  const tableHeight = 48 * scale;
+  const footerHeight = 38 * scale;
+  const outputCanvas = document.createElement("canvas");
+  outputCanvas.width = qrCanvas.width * scale + padding * 2;
+  outputCanvas.height =
+    qrCanvas.height * scale +
+    padding * 2 +
+    shopNameHeight +
+    tableHeight +
+    footerHeight;
+
+  const context = outputCanvas.getContext("2d");
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+  context.strokeStyle = "#dbe3ef";
+  context.lineWidth = 2 * scale;
+  context.strokeRect(
+    scale,
+    scale,
+    outputCanvas.width - 2 * scale,
+    outputCanvas.height - 2 * scale
+  );
+  context.fillStyle = "#0f172a";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.font = `600 ${18 * scale}px "Microsoft JhengHei", Arial, sans-serif`;
+  context.fillText(
+    String(shopName || "Scan to Order").slice(0, 20),
+    outputCanvas.width / 2,
+    padding + shopNameHeight / 2
+  );
+  context.font = `bold ${26 * scale}px "Microsoft JhengHei", Arial, sans-serif`;
+  context.fillText(
+    `桌號 ${tableNumber}`,
+    outputCanvas.width / 2,
+    padding + shopNameHeight + tableHeight / 2
+  );
+  context.imageSmoothingEnabled = false;
+  context.drawImage(
+    qrCanvas,
+    padding,
+    padding + shopNameHeight + tableHeight,
+    qrCanvas.width * scale,
+    qrCanvas.height * scale
+  );
+  context.fillStyle = "#0f766e";
+  context.font = `600 ${16 * scale}px "Microsoft JhengHei", Arial, sans-serif`;
+  context.fillText(
+    "Scan to Order · 掃描點餐",
+    outputCanvas.width / 2,
+    outputCanvas.height - padding - footerHeight / 2
+  );
+
+  return outputCanvas;
+};
+
 const QRCodeComponent = ({ currentUser }) => {
   const [count, setCount] = useState("");
   const [qrList, setQrList] = useState([]);
@@ -11,6 +71,7 @@ const QRCodeComponent = ({ currentUser }) => {
   const [messageType, setMessageType] = useState("warning");
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [deletingQrCodeId, setDeletingQrCodeId] = useState("");
   const qrCardRefs = useRef(new Map());
 
@@ -88,7 +149,9 @@ const QRCodeComponent = ({ currentUser }) => {
       setMessage("");
       const response = await AuthService.deleteQrCode(qrCode._id, currentUser);
       setQrList(response.data.qrCodes || []);
-      setMessage(`桌號 ${qrCode.tableNumber} 已刪除。`);
+      setMessage(
+        `桌號 ${qrCode.tableNumber} 已刪除，其他桌號與已印出的 QR Code 不會改號。`
+      );
       setMessageType("success");
     } catch (error) {
       console.error(error);
@@ -109,30 +172,87 @@ const QRCodeComponent = ({ currentUser }) => {
       return;
     }
 
-    const padding = 32;
-    const titleHeight = 48;
-    const outputCanvas = document.createElement("canvas");
-    outputCanvas.width = qrCanvas.width + padding * 2;
-    outputCanvas.height = qrCanvas.height + padding * 2 + titleHeight;
-
-    const context = outputCanvas.getContext("2d");
-    context.fillStyle = "#ffffff";
-    context.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
-    context.fillStyle = "#0f172a";
-    context.font = "bold 24px Arial, sans-serif";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText(
-      `桌號 ${qrCode.tableNumber}`,
-      outputCanvas.width / 2,
-      padding + titleHeight / 2
+    const outputCanvas = buildQrCardCanvas(
+      qrCanvas,
+      qrCode.tableNumber,
+      currentUser.user.username
     );
-    context.drawImage(qrCanvas, padding, padding + titleHeight);
 
     const link = document.createElement("a");
     link.download = `桌號-${qrCode.tableNumber}-QRCode.png`;
     link.href = outputCanvas.toDataURL("image/png");
     link.click();
+  };
+
+  const handleDownloadPdf = async () => {
+    if (qrList.length === 0) return;
+
+    try {
+      setIsDownloadingPdf(true);
+      setMessage("");
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+      const { jsPDF } = await import("jspdf");
+
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+      const columns = 2;
+      const rows = 2;
+      const cardsPerPage = columns * rows;
+      const cardWidth = 76;
+      const cardHeight = 109;
+      const columnGap = 10;
+      const rowGap = 12;
+      const startX =
+        (210 - (cardWidth * columns + columnGap * (columns - 1))) / 2;
+      const startY = (297 - (cardHeight * rows + rowGap * (rows - 1))) / 2;
+
+      qrList.forEach((qrCode, index) => {
+        if (index > 0 && index % cardsPerPage === 0) pdf.addPage();
+
+        const card = qrCardRefs.current.get(qrCode._id);
+        const qrCanvas = card?.querySelector("canvas");
+        if (!qrCanvas) {
+          throw new Error(`桌號 ${qrCode.tableNumber} QR Code 尚未載入`);
+        }
+
+        const pagePosition = index % cardsPerPage;
+        const column = pagePosition % columns;
+        const row = Math.floor(pagePosition / columns);
+        const outputCanvas = buildQrCardCanvas(
+          qrCanvas,
+          qrCode.tableNumber,
+          currentUser.user.username
+        );
+
+        pdf.addImage(
+          outputCanvas.toDataURL("image/png"),
+          "PNG",
+          startX + column * (cardWidth + columnGap),
+          startY + row * (cardHeight + rowGap),
+          cardWidth,
+          cardHeight,
+          undefined,
+          "FAST"
+        );
+      });
+
+      const safeShopName = currentUser.user.username.replace(
+        /[\\/:*?"<>|]/g,
+        "-"
+      );
+      pdf.save(`${safeShopName}-桌號-QRCode.pdf`);
+      setMessage(`已下載 ${qrList.length} 個桌號的 PDF。`);
+      setMessageType("success");
+    } catch (error) {
+      console.error(error);
+      setMessage(error.message || "PDF 下載失敗，請稍後再試。");
+      setMessageType("warning");
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
 
   return (
@@ -144,7 +264,19 @@ const QRCodeComponent = ({ currentUser }) => {
             <h1>桌號 QR Code</h1>
             <p>產生桌號後即可下載列印，顧客掃描後會自動帶入桌號。</p>
           </div>
-          <span className="ui-count-badge">{qrList.length} 個桌號</span>
+          <div className="qr-page-actions">
+            <span className="ui-count-badge">{qrList.length} 個桌號</span>
+            <button
+              type="button"
+              className="btn btn-outline-primary"
+              onClick={handleDownloadPdf}
+              disabled={
+                isLoading || isGenerating || isDownloadingPdf || !qrList.length
+              }
+            >
+              {isDownloadingPdf ? "PDF 製作中…" : "下載全部 PDF"}
+            </button>
+          </div>
         </header>
 
         <section className="ui-card qr-control-card">

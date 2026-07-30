@@ -72,6 +72,12 @@ class PaymentService {
     });
   }
 
+  getSellerDailyStats() {
+    return axios.get(`${API_URL}/seller/stats/today`, {
+      headers: getSellerHeaders(),
+    });
+  }
+
   markStorePaymentPaid(orderBatchId) {
     return axios.patch(
       `${API_URL}/seller/${encodeURIComponent(orderBatchId)}/mark-paid`,

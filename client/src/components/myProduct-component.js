@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import ProductService, {
   getProductImageUrl,
 } from "../services/product.service";
+import AuthService from "../services/auth.service";
 
 const formatPrice = (value) =>
   Number(value || 0).toLocaleString("zh-TW", {
@@ -18,6 +19,8 @@ const MyProductComponent = ({ currentUser }) => {
   const [searchInput, setSearchInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [qrCount, setQrCount] = useState(0);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
 
   useEffect(() => {
     if (!currentUser?.user || currentUser.user.role !== "seller") {
@@ -28,10 +31,38 @@ const MyProductComponent = ({ currentUser }) => {
     let active = true;
     setLoading(true);
     setMessage("");
+    const onboardingKey = `scanToOrder.onboardingDismissed:${currentUser.user._id}`;
+    const onboardingStartedKey = `scanToOrder.onboardingStarted:${currentUser.user._id}`;
+    setOnboardingDismissed(localStorage.getItem(onboardingKey) === "true");
+    AuthService.setSellerUser(currentUser);
 
-    ProductService.get(currentUser.user._id)
-      .then((response) => {
-        if (active) setProducts(response.data || []);
+    Promise.all([
+      ProductService.get(currentUser.user._id),
+      AuthService.getQrCodes(currentUser).catch((error) => {
+        console.error("QR Code onboarding status failed:", error);
+        return { data: { qrCodes: [] } };
+      }),
+    ])
+      .then(([productResponse, qrResponse]) => {
+        if (!active) return;
+        const nextProducts = productResponse.data || [];
+        const nextQrCount = qrResponse.data.qrCodes?.length || 0;
+        const setupIsIncomplete =
+          nextProducts.length === 0 || nextQrCount === 0;
+
+        if (setupIsIncomplete) {
+          localStorage.setItem(onboardingStartedKey, "true");
+        }
+
+        const onboardingStarted =
+          localStorage.getItem(onboardingStartedKey) === "true";
+        const onboardingWasDismissed =
+          localStorage.getItem(onboardingKey) === "true";
+        setProducts(nextProducts);
+        setQrCount(nextQrCount);
+        setOnboardingDismissed(
+          onboardingWasDismissed || (!onboardingStarted && !setupIsIncomplete)
+        );
       })
       .catch((error) => {
         console.error(error);
@@ -45,6 +76,14 @@ const MyProductComponent = ({ currentUser }) => {
       active = false;
     };
   }, [currentUser]);
+
+  const dismissOnboarding = () => {
+    localStorage.setItem(
+      `scanToOrder.onboardingDismissed:${currentUser.user._id}`,
+      "true"
+    );
+    setOnboardingDismissed(true);
+  };
 
   const visibleProducts = useMemo(() => {
     const keyword = searchInput.trim().toLocaleLowerCase("zh-TW");
@@ -129,6 +168,94 @@ const MyProductComponent = ({ currentUser }) => {
             ＋ 新增品項
           </button>
         </header>
+
+        {!loading && !onboardingDismissed && (
+          <section
+            className="seller-onboarding"
+            aria-labelledby="onboarding-title"
+          >
+            <div className="seller-onboarding__heading">
+              <div>
+                <p className="ui-eyebrow">快速開通</p>
+                <h2 id="onboarding-title">3 步驟開始接單</h2>
+                <p>完成品項與桌號後，就能用手機掃碼測試點餐流程。</p>
+              </div>
+              <button
+                type="button"
+                className="seller-onboarding__dismiss"
+                onClick={dismissOnboarding}
+                aria-label="隱藏開通引導"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="seller-onboarding__steps">
+              <article className={products.length > 0 ? "is-complete" : ""}>
+                <span>{products.length > 0 ? "✓" : "1"}</span>
+                <div>
+                  <strong>建立第一個品項</strong>
+                  <small>
+                    {products.length > 0
+                      ? `已建立 ${products.length} 個品項`
+                      : "填入名稱、分類與價格即可"}
+                  </small>
+                </div>
+                {products.length === 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    onClick={() => navigate("/postProduct")}
+                  >
+                    新增品項
+                  </button>
+                )}
+              </article>
+
+              <article className={qrCount > 0 ? "is-complete" : ""}>
+                <span>{qrCount > 0 ? "✓" : "2"}</span>
+                <div>
+                  <strong>建立桌號 QR Code</strong>
+                  <small>
+                    {qrCount > 0
+                      ? `已有 ${qrCount} 個桌號`
+                      : "輸入桌數後可一次下載 PDF"}
+                  </small>
+                </div>
+                {qrCount === 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    onClick={() => navigate("/qrcode")}
+                  >
+                    建立桌號
+                  </button>
+                )}
+              </article>
+
+              <article
+                className={
+                  products.length > 0 && qrCount > 0 ? "is-complete" : ""
+                }
+              >
+                <span>{products.length > 0 && qrCount > 0 ? "✓" : "3"}</span>
+                <div>
+                  <strong>掃碼送出測試訂單</strong>
+                  <small>用手機掃 QR，確認顧客與店家流程</small>
+                </div>
+                {products.length > 0 && qrCount > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={() => navigate("/qrcode")}
+                  >
+                    前往測試
+                  </button>
+                )}
+              </article>
+            </div>
+          </section>
+        )}
 
         <section className="ui-toolbar" aria-label="搜尋品項">
           <label className="ui-search">

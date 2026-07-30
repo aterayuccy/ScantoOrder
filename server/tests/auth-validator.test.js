@@ -15,6 +15,28 @@ describe("authentication validators", () => {
     expect(result.error).toBeUndefined();
   });
 
+  test("accepts a Chinese username", () => {
+    const result = registerSchema.validate({
+      username: "巷口早餐店",
+      password: "Portfolio123",
+      role: "seller",
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.value.username).toBe("巷口早餐店");
+  });
+
+  test("normalizes full-width username characters", () => {
+    const result = registerSchema.validate({
+      username: "ＡＢＣ商店",
+      password: "Portfolio123",
+      role: "seller",
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.value.username).toBe("ABC商店");
+  });
+
   test("rejects a password without both letters and numbers", () => {
     const result = registerSchema.validate({
       username: "fresh_graduate",

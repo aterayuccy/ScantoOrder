@@ -23,6 +23,12 @@ router.get(
   sellerOnly,
   paymentController.listSellerPayments
 );
+router.get(
+  "/seller/stats/today",
+  authenticate,
+  sellerOnly,
+  paymentController.getSellerDailyStats
+);
 router.patch(
   "/seller/:orderBatchId/mark-paid",
   authenticate,
