@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 
 const User = require("../models/user-model");
+const { normalizeUsername } = require("./username-service");
 
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync(
   "invalid-password-placeholder-123",
@@ -16,11 +17,13 @@ class AuthenticationError extends Error {
 }
 
 const registerSeller = async ({ username, password }) => {
-  if (username.toLowerCase().startsWith("guest_")) {
+  const normalizedUsername = normalizeUsername(username);
+
+  if (normalizedUsername.toLowerCase().startsWith("guest_")) {
     throw new AuthenticationError("此使用者名稱為系統保留");
   }
 
-  const usernameExists = await User.findOne({ username })
+  const usernameExists = await User.findOne({ username: normalizedUsername })
     .collation({ locale: "en", strength: 2 })
     .lean();
 
@@ -29,7 +32,11 @@ const registerSeller = async ({ username, password }) => {
   }
 
   try {
-    return await User.create({ username, password, role: "seller" });
+    return await User.create({
+      username: normalizedUsername,
+      password,
+      role: "seller",
+    });
   } catch (error) {
     if (error?.code === 11000) {
       throw new AuthenticationError("此使用者名稱已被使用", 409);
@@ -39,7 +46,8 @@ const registerSeller = async ({ username, password }) => {
 };
 
 const verifySellerCredentials = async ({ username, password }) => {
-  const user = await User.findOne({ username })
+  const normalizedUsername = normalizeUsername(username);
+  const user = await User.findOne({ username: normalizedUsername })
     .collation({ locale: "en", strength: 2 })
     .select("+password");
 

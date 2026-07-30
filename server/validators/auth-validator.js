@@ -1,16 +1,35 @@
 const Joi = require("joi");
 
+const {
+  MAX_USERNAME_LENGTH,
+  MIN_USERNAME_LENGTH,
+  getUsernameLength,
+  isValidUsername,
+  normalizeUsername,
+} = require("../services/username-service");
+
 const username = Joi.string()
-  .trim()
-  .min(3)
-  .max(20)
-  .pattern(/^[A-Za-z0-9_]+$/)
+  .custom((value, helpers) => {
+    const normalized = normalizeUsername(value);
+    const length = getUsernameLength(normalized);
+
+    if (length < MIN_USERNAME_LENGTH || length > MAX_USERNAME_LENGTH) {
+      return helpers.message({
+        custom: `使用者名稱須為 ${MIN_USERNAME_LENGTH}～${MAX_USERNAME_LENGTH} 個字`,
+      });
+    }
+
+    if (!isValidUsername(normalized)) {
+      return helpers.message({
+        custom: "使用者名稱只能包含中文、英文字母、數字與底線",
+      });
+    }
+
+    return normalized;
+  }, "username normalization")
   .required()
   .messages({
     "string.empty": "請輸入使用者名稱",
-    "string.min": "使用者名稱至少需要 3 個字元",
-    "string.max": "使用者名稱最多只能有 20 個字元",
-    "string.pattern.base": "使用者名稱只能包含英文字母、數字及底線",
     "any.required": "請輸入使用者名稱",
   });
 

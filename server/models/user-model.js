@@ -9,9 +9,9 @@ const userSchema = new Schema(
       type: String,
       required: true,
       trim: true,
-      minlength: 3,
+      minlength: 2,
       maxlength: 20,
-      match: /^[A-Za-z0-9_]+$/,
+      match: /^[\p{Script=Han}A-Za-z0-9_]+$/u,
     },
     password: {
       type: String,
@@ -85,6 +85,12 @@ userSchema.methods.isBuyer = function isBuyer() {
 userSchema.methods.isSeller = function isSeller() {
   return this.role === "seller";
 };
+
+userSchema.pre("validate", function normalizeStoredUsername() {
+  if (this.isNew || this.isModified("username")) {
+    this.username = this.username.normalize("NFKC").trim();
+  }
+});
 
 userSchema.methods.comparePassword = async function comparePassword(
   password,

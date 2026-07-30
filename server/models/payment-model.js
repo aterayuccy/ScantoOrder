@@ -160,4 +160,6 @@ const paymentSchema = new Schema(
   { timestamps: true }
 );
 
+paymentSchema.index({ seller: 1, submittedAt: -1 });
+
 module.exports = mongoose.model("Payment", paymentSchema);

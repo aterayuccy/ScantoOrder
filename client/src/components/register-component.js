@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AuthService from "../services/auth.service";
 
-const USERNAME_PATTERN = /^[A-Za-z0-9_]+$/;
+const USERNAME_PATTERN = /^[\p{Script=Han}A-Za-z0-9_]+$/u;
 const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d).*$/;
 const PASSWORD_ALLOWED_PATTERN = /^[\x20-\x7E]+$/;
 
@@ -14,14 +14,15 @@ const RegisterComponent = ({ setCurrentUser }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validateForm = () => {
-    const trimmedUsername = username.trim();
+    const trimmedUsername = username.normalize("NFKC").trim();
+    const usernameLength = Array.from(trimmedUsername).length;
 
-    if (trimmedUsername.length < 3 || trimmedUsername.length > 20) {
-      return "使用者名稱必須為 3～20 個字元";
+    if (usernameLength < 2 || usernameLength > 20) {
+      return "使用者名稱必須為 2～20 個字";
     }
 
     if (!USERNAME_PATTERN.test(trimmedUsername)) {
-      return "使用者名稱只能包含英文字母、數字及底線";
+      return "使用者名稱只能包含中文、英文字母、數字與底線";
     }
 
     if (trimmedUsername.toLowerCase().startsWith("guest_")) {
@@ -56,7 +57,7 @@ const RegisterComponent = ({ setCurrentUser }) => {
     setIsSubmitting(true);
 
     try {
-      await AuthService.register(username.trim(), password);
+      await AuthService.register(username.normalize("NFKC").trim(), password);
       AuthService.clearQrUser();
 
       if (setCurrentUser) {
@@ -93,9 +94,9 @@ const RegisterComponent = ({ setCurrentUser }) => {
               className="form-control"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
-              placeholder="3～20 個英文字母、數字或底線"
+              placeholder="2～20 個中文、英數字或底線"
               autoComplete="username"
-              minLength={3}
+              minLength={2}
               maxLength={20}
               required
             />
@@ -117,7 +118,7 @@ const RegisterComponent = ({ setCurrentUser }) => {
           </label>
 
           <p className="auth-entry-help">
-            使用者名稱不分英文大小寫，註冊後不可與其他人重複。
+            支援中文、英文字母、數字與底線；英文大小寫視為相同帳號。
           </p>
 
           <button

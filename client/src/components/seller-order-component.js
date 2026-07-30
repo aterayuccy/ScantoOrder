@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 
 import ProductService from "../services/product.service";
@@ -84,6 +90,94 @@ const SellerOrderComponent = ({ currentUser }) => {
   const [loading, setLoading] = useState(true);
   const [completedMap, setCompletedMap] = useState({});
   const [message, setMessage] = useState("");
+  const [dailyStats, setDailyStats] = useState({
+    orderCount: 0,
+    orderAmount: 0,
+    itemCount: 0,
+    completedCount: 0,
+    pendingStorePaymentCount: 0,
+    popularItems: [],
+  });
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const notificationEnabledRef = useRef(notificationsEnabled);
+  const knownOrderKeysRef = useRef(new Set());
+  const hasLoadedOrdersRef = useRef(false);
+  const audioContextRef = useRef(null);
+
+  const playNotificationSound = useCallback(() => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+
+      const audioContext = audioContextRef.current || new AudioContext();
+      audioContextRef.current = audioContext;
+      if (audioContext.state === "suspended") audioContext.resume();
+
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+      gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(
+        0.22,
+        audioContext.currentTime + 0.02
+      );
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        audioContext.currentTime + 0.35
+      );
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.36);
+    } catch (error) {
+      console.error("new order sound failed:", error);
+    }
+  }, []);
+
+  const notifyNewOrders = useCallback(
+    (newOrders) => {
+      if (!notificationEnabledRef.current || newOrders.length === 0) return;
+
+      playNotificationSound();
+      if ("Notification" in window && Notification.permission === "granted") {
+        const firstOrder = newOrders[0];
+        const location = firstOrder.tableNumber
+          ? `桌號 ${firstOrder.tableNumber}`
+          : firstOrder.buyerName || "新顧客";
+        const extra =
+          newOrders.length > 1 ? `，另有 ${newOrders.length - 1} 張訂單` : "";
+        new Notification("Scan to Order 新訂單", {
+          body: `${location} 已送出訂單${extra}`,
+          tag: `new-order-${Date.now()}`,
+        });
+      }
+    },
+    [playNotificationSound]
+  );
+
+  const toggleOrderNotifications = async () => {
+    if (notificationsEnabled) {
+      notificationEnabledRef.current = false;
+      setNotificationsEnabled(false);
+      setMessage("新訂單提示音與瀏覽器通知已關閉。");
+      return;
+    }
+
+    let permission = "unsupported";
+    if ("Notification" in window) {
+      permission = await Notification.requestPermission();
+    }
+
+    notificationEnabledRef.current = true;
+    setNotificationsEnabled(true);
+    playNotificationSound();
+    setMessage(
+      permission === "granted"
+        ? "新訂單提示已開啟；這是提示音測試。"
+        : "提示音已開啟，但瀏覽器通知未獲允許。"
+    );
+  };
 
   useEffect(() => {
     if (!currentUser?.user || currentUser.user.role !== "seller") {
@@ -92,6 +186,17 @@ const SellerOrderComponent = ({ currentUser }) => {
     }
 
     let active = true;
+    knownOrderKeysRef.current = new Set();
+    hasLoadedOrdersRef.current = false;
+    const loadDailyStats = () => {
+      PaymentService.getSellerDailyStats()
+        .then((response) => {
+          if (active) setDailyStats(response.data);
+        })
+        .catch((error) => {
+          console.error("daily order stats failed:", error);
+        });
+    };
     const loadOrders = () => {
       Promise.all([
         ProductService.get(currentUser.user._id),
@@ -102,9 +207,23 @@ const SellerOrderComponent = ({ currentUser }) => {
       ])
         .then(([productResponse, paymentResponse]) => {
           if (active) {
-            setOrders(
-              buildOrderGroups(productResponse.data, paymentResponse.data)
+            const nextOrders = buildOrderGroups(
+              productResponse.data,
+              paymentResponse.data
             );
+            const newOrders = hasLoadedOrdersRef.current
+              ? nextOrders.filter(
+                  (order) => !knownOrderKeysRef.current.has(order.groupKey)
+                )
+              : [];
+
+            nextOrders.forEach((order) =>
+              knownOrderKeysRef.current.add(order.groupKey)
+            );
+            hasLoadedOrdersRef.current = true;
+            setOrders(nextOrders);
+            notifyNewOrders(newOrders);
+            if (newOrders.length > 0) loadDailyStats();
           }
         })
         .catch((error) => {
@@ -117,12 +236,15 @@ const SellerOrderComponent = ({ currentUser }) => {
     };
 
     loadOrders();
+    loadDailyStats();
     const intervalId = window.setInterval(loadOrders, 3000);
+    const statsIntervalId = window.setInterval(loadDailyStats, 15000);
     return () => {
       active = false;
       window.clearInterval(intervalId);
+      window.clearInterval(statsIntervalId);
     };
-  }, [currentUser]);
+  }, [currentUser, notifyNewOrders]);
 
   const orderCount = useMemo(() => orders.length, [orders]);
 
@@ -231,10 +353,52 @@ const SellerOrderComponent = ({ currentUser }) => {
           <p className="product-form-eyebrow">每 3 秒自動更新</p>
           <h2>店家訂單</h2>
         </div>
-        <span className="seller-order-count">{orderCount} 張待處理</span>
+        <div className="seller-order-heading-actions">
+          <button
+            type="button"
+            className={`btn ${
+              notificationsEnabled
+                ? "btn-outline-success"
+                : "btn-outline-secondary"
+            }`}
+            onClick={toggleOrderNotifications}
+          >
+            {notificationsEnabled ? "🔔 新訂單提示已開啟" : "開啟新訂單提示"}
+          </button>
+          <span className="seller-order-count">{orderCount} 張待處理</span>
+        </div>
       </div>
 
       {message && <div className="alert alert-warning">{message}</div>}
+
+      <section className="seller-daily-stats" aria-label="今日訂單統計">
+        <article>
+          <span>今日訂單</span>
+          <strong>{dailyStats.orderCount} 張</strong>
+          <small>{dailyStats.itemCount} 個品項</small>
+        </article>
+        <article>
+          <span>今日訂單金額</span>
+          <strong>
+            NT$ {Number(dailyStats.orderAmount || 0).toLocaleString("zh-TW")}
+          </strong>
+          <small>包含店內付款與 LINE Pay</small>
+        </article>
+        <article>
+          <span>已完成</span>
+          <strong>{dailyStats.completedCount} 張</strong>
+          <small>{dailyStats.pendingStorePaymentCount} 張店內付款待收款</small>
+        </article>
+        <article>
+          <span>今日熱門</span>
+          <strong>{dailyStats.popularItems?.[0]?.title || "尚無資料"}</strong>
+          <small>
+            {dailyStats.popularItems?.[0]
+              ? `${dailyStats.popularItems[0].quantity} 份`
+              : "有訂單後會自動統計"}
+          </small>
+        </article>
+      </section>
 
       {orders.length === 0 ? (
         <div className="empty-state">

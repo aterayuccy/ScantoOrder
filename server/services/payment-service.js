@@ -25,6 +25,69 @@ class PaymentError extends Error {
 const sameId = (left, right) =>
   Boolean(left && right && String(left) === String(right));
 
+const TAIPEI_OFFSET_MS = 8 * 60 * 60 * 1000;
+
+const getTaipeiDayRange = (now = new Date()) => {
+  const taipeiTime = new Date(now.getTime() + TAIPEI_OFFSET_MS);
+  const date = taipeiTime.toISOString().slice(0, 10);
+  const start = new Date(`${date}T00:00:00+08:00`);
+
+  return {
+    date,
+    start,
+    end: new Date(start.getTime() + 24 * 60 * 60 * 1000),
+  };
+};
+
+const summarizeDailyPayments = (payments, date) => {
+  const itemTotals = new Map();
+
+  for (const payment of payments) {
+    for (const item of payment.items || []) {
+      const title = String(item.title || "未命名品項");
+      const current = itemTotals.get(title) || {
+        title,
+        quantity: 0,
+        amount: 0,
+      };
+      current.quantity += Number(item.quantity || 0);
+      current.amount += Number(item.lineTotal || 0);
+      itemTotals.set(title, current);
+    }
+  }
+
+  const popularItems = [...itemTotals.values()]
+    .sort(
+      (left, right) =>
+        right.quantity - left.quantity || right.amount - left.amount
+    )
+    .slice(0, 3);
+
+  return {
+    date,
+    orderCount: payments.length,
+    orderAmount: payments.reduce(
+      (total, payment) => total + Number(payment.amount || 0),
+      0
+    ),
+    itemCount: payments.reduce(
+      (total, payment) =>
+        total +
+        (payment.items || []).reduce(
+          (quantity, item) => quantity + Number(item.quantity || 0),
+          0
+        ),
+      0
+    ),
+    paidCount: payments.filter((payment) => payment.status === "paid").length,
+    pendingStorePaymentCount: payments.filter(
+      (payment) => payment.status === "pay_at_store"
+    ).length,
+    completedCount: payments.filter((payment) => payment.completedAt).length,
+    popularItems,
+  };
+};
+
 const toPublicPayment = (payment) => ({
   orderId: payment.orderId,
   orderBatchId: payment.orderBatchId,
@@ -302,6 +365,18 @@ const listSellerPayments = async (sellerId) => {
   return payments.map(toPublicPayment);
 };
 
+const getSellerDailyStats = async (sellerId, now = new Date()) => {
+  const { date, start, end } = getTaipeiDayRange(now);
+  const payments = await Payment.find({
+    seller: sellerId,
+    orderBatchId: { $ne: "" },
+    status: { $in: ["pay_at_store", "paid"] },
+    submittedAt: { $gte: start, $lt: end },
+  }).lean();
+
+  return summarizeDailyPayments(payments, date);
+};
+
 const markStorePaymentPaid = async (sellerId, orderBatchId) => {
   const payment = await Payment.findOne({ seller: sellerId, orderBatchId });
   if (!payment) throw new PaymentError("找不到付款資料", 404);
@@ -340,9 +415,12 @@ module.exports = {
   createCheckout,
   getBuyerPayment,
   getPaymentMode,
+  getSellerDailyStats,
+  getTaipeiDayRange,
   listSellerPayments,
   markInvoiceProcessed,
   markStorePaymentPaid,
   normalizeClientBaseUrl,
+  summarizeDailyPayments,
   toPublicPayment,
 };

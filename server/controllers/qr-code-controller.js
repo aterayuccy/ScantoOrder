@@ -54,19 +54,7 @@ const deleteQrCode = async (req, res) => {
 
     if (!qrCode) return res.status(404).send("找不到 QR code");
 
-    const deletedTableNumber = qrCode.tableNumber;
     await QrCode.deleteOne({ _id: qrCode._id });
-    const followingQrCodes = await QrCode.find({
-      seller: req.user._id,
-      tableNumber: { $gt: deletedTableNumber },
-    })
-      .sort({ tableNumber: 1 })
-      .exec();
-
-    for (const followingQrCode of followingQrCodes) {
-      followingQrCode.tableNumber -= 1;
-      await followingQrCode.save();
-    }
 
     return listQrCodes(req, res);
   } catch (error) {
