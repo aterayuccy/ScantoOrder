@@ -85,10 +85,9 @@ const submitPendingOrder = async (
   }
 
   const checkoutToken = normalizeCheckoutToken(rawCheckoutToken);
-  const orderBatchId =
-    /^[a-f0-9]{64}$/.test(knownOrderBatchId)
-      ? knownOrderBatchId
-      : buildOrderBatchId(user._id, checkoutToken);
+  const orderBatchId = /^[a-f0-9]{64}$/.test(knownOrderBatchId)
+    ? knownOrderBatchId
+    : buildOrderBatchId(user._id, checkoutToken);
   const products = await getBuyerProducts(user);
   const existingBatchItem = products
     .flatMap((product) => product.buyer || [])
@@ -106,6 +105,8 @@ const submitPendingOrder = async (
 
     for (const item of pendingItems) {
       item.tableNumber = user.tableNumber;
+      item.buyerUsernameSnapshot =
+        item.buyerUsernameSnapshot || user.username || "";
       item.submittedAt = submittedAt;
       item.orderBatchId = orderBatchId;
       item.titleSnapshot = item.titleSnapshot || product.title;

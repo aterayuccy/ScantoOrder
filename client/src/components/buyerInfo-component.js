@@ -82,7 +82,7 @@ const BuyerInfoComponent = () => {
               const username =
                 typeof user === "object" && user?.username
                   ? user.username
-                  : "掃碼顧客";
+                  : buyer.buyerUsernameSnapshot || "掃碼顧客";
               const unitPrice =
                 buyer.unitPrice === null || buyer.unitPrice === undefined
                   ? Number(product?.price || 0)

@@ -56,9 +56,7 @@ const requireSeller = (req, res) => {
 
 const normalizeInvoicePreference = (body = {}) => {
   const invoicePreference =
-    body.invoicePreference === "mobile_carrier"
-      ? "mobile_carrier"
-      : "none";
+    body.invoicePreference === "mobile_carrier" ? "mobile_carrier" : "none";
   const mobileCarrier = String(body.mobileCarrier || "")
     .trim()
     .toUpperCase();
@@ -74,8 +72,7 @@ const normalizeInvoicePreference = (body = {}) => {
 
   return {
     invoicePreference,
-    mobileCarrier:
-      invoicePreference === "mobile_carrier" ? mobileCarrier : "",
+    mobileCarrier: invoicePreference === "mobile_carrier" ? mobileCarrier : "",
     invoiceStatus:
       invoicePreference === "mobile_carrier" ? "pending" : "not_requested",
   };
@@ -103,7 +100,7 @@ const normalizeClientBaseUrl = (req) => {
       throw new Error("insecure client URL");
     }
     return parsed.origin;
-  } catch (error) {
+  } catch {
     throw new CheckoutError("網站回傳網址設定不正確", 500);
   }
 };
@@ -165,9 +162,7 @@ router.post("/checkout", authenticate, async (req, res) => {
       } else if (
         ["cancelled", "failed", "created"].includes(existingPayment.status)
       ) {
-        return res
-          .status(409)
-          .send("原付款流程已結束，請返回購物車重新結帳");
+        return res.status(409).send("原付款流程已結束，請返回購物車重新結帳");
       }
       return res.send({
         message: "已載入原付款流程",
@@ -300,10 +295,7 @@ router.post("/confirm", authenticate, async (req, res) => {
 
     if (payment.providerMode !== "mock") {
       const transactionId = String(req.body.transactionId || "");
-      if (
-        !transactionId ||
-        transactionId !== payment.providerTransactionId
-      ) {
+      if (!transactionId || transactionId !== payment.providerTransactionId) {
         return res.status(400).send("LINE Pay 交易編號不正確");
       }
       await confirmLinePay({

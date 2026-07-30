@@ -9,6 +9,28 @@ const API_URL = `${API_BASE_URL}/api/user`;
 const LOCAL_USER_KEY = "user";
 const QR_USER_KEY = "qrUser";
 const SELLER_USER_KEY = "sellerUser";
+const QR_CLIENT_SESSION_KEY = "qrClientSessionId";
+
+const createClientSessionId = () => {
+  if (window.crypto?.randomUUID) {
+    return window.crypto.randomUUID().replaceAll("-", "_");
+  }
+
+  const bytes = new Uint8Array(24);
+  window.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join(
+    ""
+  );
+};
+
+const getQrClientSessionId = () => {
+  const existing = localStorage.getItem(QR_CLIENT_SESSION_KEY);
+  if (existing) return existing;
+
+  const clientSessionId = createClientSessionId();
+  localStorage.setItem(QR_CLIENT_SESSION_KEY, clientSessionId);
+  return clientSessionId;
+};
 
 const getStoredUser = (storage, key) => {
   try {
@@ -98,6 +120,7 @@ class AuthService {
     sessionStorage.removeItem("pendingPaymentOrder");
     if (sessionStorage.getItem(QR_USER_KEY)) {
       sessionStorage.removeItem(QR_USER_KEY);
+      localStorage.removeItem(QR_CLIENT_SESSION_KEY);
     } else {
       localStorage.removeItem(LOCAL_USER_KEY);
       localStorage.removeItem(SELLER_USER_KEY);
@@ -180,9 +203,11 @@ class AuthService {
   }
 
   qrLogin(qrToken) {
-    return axios.post(API_URL + "/qr-login", { qrToken });
+    return axios.post(API_URL + "/qr-login", {
+      qrToken,
+      clientSessionId: getQrClientSessionId(),
+    });
   }
-
 }
 
 const authService = new AuthService();

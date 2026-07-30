@@ -34,7 +34,7 @@ const readResponse = async (response) => {
   let data = text;
   try {
     data = JSON.parse(text);
-  } catch (error) {
+  } catch {
     // Validation messages may intentionally be plain text.
   }
   return { status: response.status, ok: response.ok, data };
@@ -133,10 +133,7 @@ const verifyPaymentFlow = async () => {
       headers: storeGuest.headers,
       body: { checkoutToken: `bypass_${Date.now()}` },
     });
-    assert(
-      bypassCheckout.status === 410,
-      "舊版直接送單 API 不應繞過付款流程"
-    );
+    assert(bypassCheckout.status === 410, "舊版直接送單 API 不應繞過付款流程");
 
     const invalidCarrier = await requestJson("/payment/checkout", {
       method: "POST",
@@ -195,8 +192,7 @@ const verifyPaymentFlow = async () => {
       }
     );
     assert(
-      markInvoice.ok &&
-        markInvoice.data.payment.invoiceStatus === "processed",
+      markInvoice.ok && markInvoice.data.payment.invoiceStatus === "processed",
       "店家載具處理狀態更新失敗"
     );
 
@@ -224,9 +220,7 @@ const verifyPaymentFlow = async () => {
     assert(
       lineCheckout.data.payment.status === "pending" &&
         lineCheckout.data.payment.providerMode === "mock" &&
-        lineCheckout.data.redirectUrl.startsWith(
-          "http://192.168.1.50:3000/"
-        ),
+        lineCheckout.data.redirectUrl.startsWith("http://192.168.1.50:3000/"),
       "沒有 LINE Pay 金鑰時應使用展示模式，並支援開發用私人區網網址"
     );
 

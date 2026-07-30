@@ -65,6 +65,11 @@ const selectedOptionSchema = new Schema(
 const buyerItemSchema = new Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    buyerUsernameSnapshot: {
+      type: String,
+      default: "",
+      maxlength: 20,
+    },
     quantity: { type: Number, default: 1, min: 1 },
     tableNumber: { type: Number, default: null },
     submittedAt: { type: Date, default: null },

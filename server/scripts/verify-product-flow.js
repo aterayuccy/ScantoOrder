@@ -34,7 +34,7 @@ const readResponse = async (response) => {
 
   try {
     data = JSON.parse(text);
-  } catch (error) {
+  } catch {
     // Some validation responses intentionally use plain text.
   }
 
@@ -56,12 +56,7 @@ const requestJson = async (urlPath, options = {}) => {
   return readResponse(response);
 };
 
-const createProduct = async ({
-  token,
-  title,
-  price,
-  optionGroups,
-}) => {
+const createProduct = async ({ token, title, price, optionGroups }) => {
   const form = new FormData();
   form.append("title", title);
   form.append("description", "品項流程自動測試");
@@ -121,21 +116,15 @@ const verifyProductFlow = async () => {
       optionGroups: [
         {
           name: "內容調整",
-          options: [
-            { name: "改為小杯", priceAdjustment: -20 },
-          ],
+          options: [{ name: "改為小杯", priceAdjustment: -20 }],
         },
         {
           name: "口味調整",
-          options: [
-            { name: "半糖", priceAdjustment: 0 },
-          ],
+          options: [{ name: "半糖", priceAdjustment: 0 }],
         },
         {
           name: "加購",
-          options: [
-            { name: "加購點心", priceAdjustment: 40 },
-          ],
+          options: [{ name: "加購點心", priceAdjustment: 40 }],
         },
       ],
     });
@@ -183,8 +172,7 @@ const verifyProductFlow = async () => {
       "大杯 60 元改為小杯 -20 元後應為 40 元"
     );
     assert(
-      adjustedEnroll.data.lineItem.selectedOptions[0].optionName ===
-        "改為小杯",
+      adjustedEnroll.data.lineItem.selectedOptions[0].optionName === "改為小杯",
       "購物車應保存顧客選擇的內容"
     );
 
@@ -212,7 +200,9 @@ const verifyProductFlow = async () => {
     const cart = await requestJson(`/product/buyer/${guestId}`, {
       headers: buyerHeaders,
     });
-    const ownLines = (cart.data || []).flatMap((product) => product.buyer || []);
+    const ownLines = (cart.data || []).flatMap(
+      (product) => product.buyer || []
+    );
     assert(cart.ok && ownLines.length === 2, "顧客購物車應有兩筆測試品項");
 
     console.log("簡化品項流程測試全部通過");

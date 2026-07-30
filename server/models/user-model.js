@@ -1,80 +1,106 @@
-const mongoose=require('mongoose');
-const {Schema}=mongoose;
-const bcrypt=require('bcrypt');
+const bcrypt = require("bcrypt");
+const mongoose = require("mongoose");
 
-const userSchema=new Schema({
-    username:{
-        type:String,
-        required:true,
-        trim:true,
-        minlength:3,
-        maxlength:20,
-        match:/^[A-Za-z0-9_]+$/
+const { Schema } = mongoose;
+
+const userSchema = new Schema(
+  {
+    username: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 3,
+      maxlength: 20,
+      match: /^[A-Za-z0-9_]+$/,
     },
-    password:{
-        type:String,
-        required:true,
-        minlength:8,
-        maxlength:64,
-        match:/^[\x20-\x7E]+$/,
-        select:false
+    password: {
+      type: String,
+      required: true,
+      minlength: 8,
+      maxlength: 64,
+      match: /^[\x20-\x7e]+$/,
+      select: false,
     },
-    role:{
-        type:String,
-        enum:["buyer","seller"],
-        required:true
+    role: {
+      type: String,
+      enum: ["buyer", "seller"],
+      required: true,
     },
     tableNumber: {
-        type: Number,
-        default: null
+      type: Number,
+      default: null,
     },
     qrSeller: {
-        type: Schema.Types.ObjectId,
-        ref: "User",
-        default: null
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
     },
-}, {
-    timestamps:true,
-})
-
-userSchema.index(
-    {username:1},
-    {
-        unique:true,
-        collation:{locale:"en",strength:2}
-    }
+    guestSessionKey: {
+      type: String,
+      default: undefined,
+      select: false,
+    },
+    guestExpiresAt: {
+      type: Date,
+      default: undefined,
+      select: false,
+    },
+    lastSeenAt: {
+      type: Date,
+      default: undefined,
+      select: false,
+    },
+  },
+  {
+    timestamps: true,
+  }
 );
 
+userSchema.index(
+  { username: 1 },
+  {
+    unique: true,
+    collation: { locale: "en", strength: 2 },
+  }
+);
+userSchema.index(
+  { guestSessionKey: 1 },
+  {
+    unique: true,
+    sparse: true,
+  }
+);
+userSchema.index(
+  { guestExpiresAt: 1 },
+  {
+    expireAfterSeconds: 0,
+    partialFilterExpression: { role: "buyer" },
+  }
+);
 
-userSchema.methods.isBuyer= function(){
-    return this.role==="buyer";
-}
-
-userSchema.methods.isSeller= function(){
-    return this.role==="seller";
-}
-
-userSchema.methods.comparePassword=async function(password,cb){
-    let result;
-    try {
-        result=await bcrypt.compare(password,this.password);
-        return cb(null,result); 
-    } catch (e) {
-        return cb(e,result); 
-    }
-       
+userSchema.methods.isBuyer = function isBuyer() {
+  return this.role === "buyer";
 };
 
+userSchema.methods.isSeller = function isSeller() {
+  return this.role === "seller";
+};
 
-userSchema.pre('save',async function (next) {
+userSchema.methods.comparePassword = async function comparePassword(
+  password,
+  callback
+) {
+  try {
+    return callback(null, await bcrypt.compare(password, this.password));
+  } catch (error) {
+    return callback(error);
+  }
+};
 
-    if(this.isNew || this.isModified('password')){
-        const hashValue=await bcrypt.hash(this.password,10);
-        this.password=hashValue;
-    }
-    next();
+userSchema.pre("save", async function hashPassword() {
+  if (this.isNew || this.isModified("password")) {
+    this.password = await bcrypt.hash(this.password, 10);
+  }
 });
 
-
-module.exports=mongoose.model('User',userSchema);
-
+module.exports = mongoose.model("User", userSchema);

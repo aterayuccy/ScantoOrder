@@ -9,6 +9,10 @@
   "scripts": {
     "build": "npm run build --workspace client",
     "start": "node server/index.js",
+    "test": "npm test --workspace server",
+    "lint": "npm run lint --workspace server",
+    "format": "prettier --write \"server/**/*.js\" \"client/src/**/*.{js,jsx}\" \"*.json\" \"server/*.json\"",
+    "format:check": "prettier --check \"server/**/*.js\" \"client/src/**/*.{js,jsx}\" \"*.json\" \"server/*.json\"",
     "test:auth": "npm run test:auth --workspace server",
     "test:options": "npm run test:options --workspace server",
     "test:product-flow": "npm run test:product-flow --workspace server",

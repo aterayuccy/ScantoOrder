@@ -24,9 +24,7 @@ const isLocalDatabase =
   mongoUri.includes("[::1]");
 
 if ((!isLocalApi || !isLocalDatabase) && !allowRemoteTest) {
-  throw new Error(
-    "安全起見，帳號流程測試預設只能使用本機 API 與資料庫"
-  );
+  throw new Error("安全起見，帳號流程測試預設只能使用本機 API 與資料庫");
 }
 
 const request = async (path, body) => {
@@ -40,7 +38,7 @@ const request = async (path, body) => {
   let data = responseText;
   try {
     data = JSON.parse(responseText);
-  } catch (error) {
+  } catch {
     // String responses are expected for validation errors.
   }
 
@@ -145,15 +143,31 @@ const verifyAuthFlow = async () => {
 
     const qrCode = await QrCode.findOne().lean();
     if (qrCode) {
+      const clientSessionId = `verify_session_${Date.now()}`;
       const qrLoginResponse = await request("/user/qr-login", {
         qrToken: qrCode.token,
+        clientSessionId,
       });
       qrGuestId = qrLoginResponse.data?.user?._id || null;
       assert(qrLoginResponse.status === 200, "QR 訪客登入應成功");
-      assert(!hasSensitiveKey(qrLoginResponse.data), "QR 登入回應不應包含敏感欄位");
+      assert(
+        !hasSensitiveKey(qrLoginResponse.data),
+        "QR 登入回應不應包含敏感欄位"
+      );
       assert(
         qrLoginResponse.data?.user?.username?.startsWith("guest_"),
         "QR 訪客應使用系統保留的隨機帳號"
+      );
+
+      const repeatedQrLoginResponse = await request("/user/qr-login", {
+        qrToken: qrCode.token,
+        clientSessionId,
+      });
+      assert(
+        repeatedQrLoginResponse.status === 200 &&
+          repeatedQrLoginResponse.data?.user?._id === qrGuestId &&
+          repeatedQrLoginResponse.data?.reused === true,
+        "同一瀏覽器重掃相同 QR code 應重用有效的訪客帳號"
       );
     }
 

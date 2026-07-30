@@ -125,9 +125,7 @@ const NavComponent = ({ currentUser }) => {
             ) : (
               <>
                 <Link
-                  className={`app-nav-link${
-                    isActive("/") ? " is-active" : ""
-                  }`}
+                  className={`app-nav-link${isActive("/") ? " is-active" : ""}`}
                   to="/"
                   onClick={buyerNavigation}
                 >

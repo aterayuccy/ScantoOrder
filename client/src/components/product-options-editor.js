@@ -120,7 +120,8 @@ const ProductOptionsEditor = ({
         if (index !== groupIndex) return group;
         const selectionType =
           patch.selectionType === "multiple" ||
-          (patch.selectionType === undefined && group.selectionType === "multiple")
+          (patch.selectionType === undefined &&
+            group.selectionType === "multiple")
             ? "multiple"
             : "single";
 
@@ -128,7 +129,8 @@ const ProductOptionsEditor = ({
           ...group,
           selectionType,
           required: false,
-          maxSelections: selectionType === "multiple" ? MAX_OPTIONS_PER_STEP : 1,
+          maxSelections:
+            selectionType === "multiple" ? MAX_OPTIONS_PER_STEP : 1,
           ...patch,
         };
       })
@@ -271,7 +273,8 @@ const ProductOptionsEditor = ({
             </div>
           </div>
           <p style={{ ...helperTextStyle, flex: "1 1 16rem" }}>
-            調整數量後按「確認」才會套用。減少時會從最後一個步驟開始移除；設為 0 時，顧客會直接加入購物車。
+            調整數量後按「確認」才會套用。減少時會從最後一個步驟開始移除；設為 0
+            時，顧客會直接加入購物車。
           </p>
         </div>
       </div>
@@ -372,7 +375,6 @@ const ProductOptionsEditor = ({
                     </label>
                   </div>
                 </fieldset>
-
               </div>
 
               <section
@@ -383,8 +385,13 @@ const ProductOptionsEditor = ({
                 }}
                 aria-label={`${group.label || `步驟 ${groupIndex + 1}`}的步驟種類`}
               >
-                <div style={{ ...fieldStyle, width: "15rem", maxWidth: "100%" }}>
-                  <label htmlFor={`${groupId}-option-count`} style={fieldLabelStyle}>
+                <div
+                  style={{ ...fieldStyle, width: "15rem", maxWidth: "100%" }}
+                >
+                  <label
+                    htmlFor={`${groupId}-option-count`}
+                    style={fieldLabelStyle}
+                  >
                     種類數量
                   </label>
                   <div className="count-confirm-control">
@@ -396,7 +403,9 @@ const ProductOptionsEditor = ({
                       max={MAX_OPTIONS_PER_STEP}
                       step="1"
                       inputMode="numeric"
-                      value={optionCountDrafts[groupKey] ?? String(options.length)}
+                      value={
+                        optionCountDrafts[groupKey] ?? String(options.length)
+                      }
                       onChange={(event) =>
                         setOptionCountDrafts((current) => ({
                           ...current,
@@ -496,7 +505,6 @@ const ProductOptionsEditor = ({
                           >
                             ×
                           </button>
-
                         </div>
                       );
                     })}

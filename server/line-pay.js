@@ -18,9 +18,7 @@ const getLinePayMode = () => {
   ) {
     return "mock";
   }
-  return process.env.LINE_PAY_ENV === "production"
-    ? "production"
-    : "sandbox";
+  return process.env.LINE_PAY_ENV === "production" ? "production" : "sandbox";
 };
 
 const getApiBaseUrl = () =>
@@ -29,12 +27,7 @@ const getApiBaseUrl = () =>
     : "https://sandbox-api-pay.line.me";
 
 const parseLinePayJson = (text) =>
-  JSON.parse(
-    text.replace(
-      /("transactionId"\s*:\s*)(\d+)/g,
-      '$1"$2"'
-    )
-  );
+  JSON.parse(text.replace(/("transactionId"\s*:\s*)(\d+)/g, '$1"$2"'));
 
 const callLinePay = async (apiPath, body) => {
   const requestBody = JSON.stringify(body);
@@ -58,7 +51,7 @@ const callLinePay = async (apiPath, body) => {
       body: requestBody,
       signal: AbortSignal.timeout(45000),
     });
-  } catch (error) {
+  } catch {
     throw new LinePayError("目前無法連線至 LINE Pay，請稍後再試");
   }
 
@@ -66,7 +59,7 @@ const callLinePay = async (apiPath, body) => {
   let data;
   try {
     data = parseLinePayJson(responseText);
-  } catch (error) {
+  } catch {
     throw new LinePayError("LINE Pay 回傳了無法辨識的資料");
   }
 

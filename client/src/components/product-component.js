@@ -6,7 +6,11 @@ import { UPLOADS_URL } from "../services/product.service";
 const getPendingBuyerItem = (product, buyerId) => {
   return (product.buyer || []).find((b) => {
     const id =
-      b.user && b.user._id ? b.user._id.toString() : b.user ? b.user.toString() : "";
+      b.user && b.user._id
+        ? b.user._id.toString()
+        : b.user
+          ? b.user.toString()
+          : "";
 
     return id === buyerId && !b.submittedAt;
   });
@@ -50,7 +54,9 @@ const ProductComponent = ({ currentUser }) => {
           if (!pendingBuyerItem) return;
 
           pendingProducts.push(product);
-          initialQuantities[product._id] = Number(pendingBuyerItem.quantity || 1);
+          initialQuantities[product._id] = Number(
+            pendingBuyerItem.quantity || 1
+          );
         });
 
         setProductData(pendingProducts);
@@ -184,13 +190,21 @@ const ProductComponent = ({ currentUser }) => {
                       餐點名稱: {product.title}
                     </p>
 
-                    <p style={{ marginBottom: "1rem" }}>餐點價格: {product.price}</p>
+                    <p style={{ marginBottom: "1rem" }}>
+                      餐點價格: {product.price}
+                    </p>
 
                     <div
                       className="input-group"
-                      style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                      }}
                     >
-                      <p style={{ margin: 0, whiteSpace: "nowrap" }}>購買數量:</p>
+                      <p style={{ margin: 0, whiteSpace: "nowrap" }}>
+                        購買數量:
+                      </p>
                       <input
                         type="number"
                         min="1"
@@ -218,7 +232,10 @@ const ProductComponent = ({ currentUser }) => {
                     </button>
                   </div>
 
-                  <div className="product-image-wrap" style={{ width: "20rem", flexShrink: 0 }}>
+                  <div
+                    className="product-image-wrap"
+                    style={{ width: "20rem", flexShrink: 0 }}
+                  >
                     {product.image && (
                       <img
                         className="product-image"
@@ -241,7 +258,13 @@ const ProductComponent = ({ currentUser }) => {
       )}
 
       {productData.length > 0 && (
-        <div style={{ display: "flex", justifyContent: "center", marginTop: "2rem" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            marginTop: "2rem",
+          }}
+        >
           <button
             style={{ minWidth: "8rem" }}
             className="btn btn-primary"
