@@ -24,6 +24,20 @@ class SupportService {
     });
   }
 
+  updateSellerTicketFeedback(currentUser, ticketId, feedback) {
+    return axios.patch(
+      `${API_URL}/tickets/${ticketId}/feedback`,
+      { feedback },
+      { headers: sellerHeaders(currentUser) }
+    );
+  }
+
+  deleteSellerTicket(currentUser, ticketId) {
+    return axios.delete(`${API_URL}/tickets/${ticketId}`, {
+      headers: sellerHeaders(currentUser),
+    });
+  }
+
   listAdminTickets(adminKey, status = "") {
     return axios.get(`${API_URL}/admin/tickets`, {
       headers: { "x-support-admin-key": adminKey },

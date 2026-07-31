@@ -6,6 +6,7 @@ const supportAdminOnly = require("../middlewares/support-admin");
 const validateRequest = require("../middlewares/validate-request");
 const {
   createSupportTicketSchema,
+  sellerSupportFeedbackSchema,
   updateSupportTicketSchema,
 } = require("../validators/support-validator");
 
@@ -21,6 +22,19 @@ router.get(
   authenticate,
   sellerOnly,
   supportController.listSellerTickets
+);
+router.patch(
+  "/tickets/:ticketId/feedback",
+  authenticate,
+  sellerOnly,
+  validateRequest(sellerSupportFeedbackSchema),
+  supportController.respondToTicket
+);
+router.delete(
+  "/tickets/:ticketId",
+  authenticate,
+  sellerOnly,
+  supportController.deleteSellerTicket
 );
 
 router.get(

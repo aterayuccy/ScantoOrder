@@ -48,8 +48,13 @@ const updateTicket = async ({ ticketId, input }) => {
   if (!ticket) throw new SupportError("找不到指定的問題單", 404);
 
   if (Object.prototype.hasOwnProperty.call(input, "adminReply")) {
+    const replyChanged = ticket.adminReply !== input.adminReply;
     ticket.adminReply = input.adminReply;
     ticket.repliedAt = input.adminReply ? new Date() : null;
+    if (replyChanged) {
+      ticket.sellerFeedback = "";
+      ticket.sellerFeedbackAt = null;
+    }
   }
   if (input.status) ticket.status = input.status;
   if (input.adminReply && ticket.status === "open") {
@@ -58,6 +63,37 @@ const updateTicket = async ({ ticketId, input }) => {
 
   await ticket.save();
   return ticket;
+};
+
+const respondToTicket = async ({ ticketId, sellerId, feedback }) => {
+  const ticket = await SupportTicket.findOne({
+    _id: ticketId,
+    seller: sellerId,
+  });
+  if (!ticket) throw new SupportError("找不到指定的問題單", 404);
+  if (!ticket.adminReply || !["answered", "closed"].includes(ticket.status)) {
+    throw new SupportError("這張問題單目前還沒有可回饋的客服回覆", 409);
+  }
+
+  ticket.sellerFeedback = feedback;
+  ticket.sellerFeedbackAt = new Date();
+  ticket.status = feedback === "resolved" ? "closed" : "open";
+  await ticket.save();
+  return ticket;
+};
+
+const deleteSellerTicket = async ({ ticketId, sellerId }) => {
+  const ticket = await SupportTicket.findOne({
+    _id: ticketId,
+    seller: sellerId,
+  });
+  if (!ticket) throw new SupportError("找不到指定的問題單", 404);
+
+  await ticket.deleteOne();
+  return {
+    message: "問題單已刪除",
+    ticketId,
+  };
 };
 
 const deleteTicket = async ({ ticketId }) => {
@@ -77,8 +113,10 @@ const deleteTicket = async ({ ticketId }) => {
 module.exports = {
   SupportError,
   createTicket,
+  deleteSellerTicket,
   deleteTicket,
   listAdminTickets,
   listSellerTickets,
+  respondToTicket,
   updateTicket,
 };

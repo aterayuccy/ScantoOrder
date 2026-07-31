@@ -1,6 +1,7 @@
 const supportAdminOnly = require("../middlewares/support-admin");
 const {
   createSupportTicketSchema,
+  sellerSupportFeedbackSchema,
   updateSupportTicketSchema,
 } = require("../validators/support-validator");
 
@@ -32,6 +33,23 @@ describe("support validators", () => {
     });
 
     expect(result.error).toBeUndefined();
+  });
+
+  test("accepts resolved or unresolved seller feedback", () => {
+    expect(
+      sellerSupportFeedbackSchema.validate({ feedback: "resolved" }).error
+    ).toBeUndefined();
+    expect(
+      sellerSupportFeedbackSchema.validate({ feedback: "unresolved" }).error
+    ).toBeUndefined();
+  });
+
+  test("rejects an unknown seller feedback value", () => {
+    const result = sellerSupportFeedbackSchema.validate({
+      feedback: "maybe",
+    });
+
+    expect(result.error).toBeDefined();
   });
 });
 

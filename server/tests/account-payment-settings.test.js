@@ -88,7 +88,7 @@ describe("seller LINE Pay settings", () => {
     });
   });
 
-  test("removes stored credentials when the seller switches to a QR code", async () => {
+  test("removes stored credentials when automatic LINE Pay is disabled", async () => {
     process.env.PAYMENT_CREDENTIAL_ENCRYPTION_KEY =
       "test-payment-encryption-key-with-32-characters";
     const seller = {

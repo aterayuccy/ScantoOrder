@@ -72,7 +72,6 @@ const CartComponent = ({ currentUser }) => {
   const [mobileCarrier, setMobileCarrier] = useState("");
   const [storeSettings, setStoreSettings] = useState({
     acceptingOrders: true,
-    paymentQrImage: "",
     linePayAvailable: false,
   });
 
@@ -89,7 +88,7 @@ const CartComponent = ({ currentUser }) => {
       sellerId
         ? AuthService.getStoreSettings(sellerId, currentUser)
         : Promise.resolve({
-            data: { acceptingOrders: true, paymentQrImage: "" },
+            data: { acceptingOrders: true, linePayAvailable: false },
           }),
     ])
       .then(([cartResponse, settingsResponse]) => {
@@ -378,41 +377,6 @@ const CartComponent = ({ currentUser }) => {
                     <small>送出訂單後至櫃檯付款</small>
                   </span>
                 </label>
-                {!storeSettings.linePayAvailable &&
-                  storeSettings.paymentQrImage && (
-                    <label
-                      className={`checkout-choice${
-                        paymentMethod === "merchant_qr" ? " is-selected" : ""
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="merchant_qr"
-                        checked={paymentMethod === "merchant_qr"}
-                        onChange={() => setPaymentMethod("merchant_qr")}
-                      />
-                      <span>
-                        <strong>掃描店家收款碼</strong>
-                        <small>款項直接進入店家帳戶，由店家人工確認</small>
-                      </span>
-                    </label>
-                  )}
-                {!storeSettings.linePayAvailable &&
-                  paymentMethod === "merchant_qr" &&
-                  storeSettings.paymentQrImage && (
-                    <div className="merchant-qr-payment">
-                      <img
-                        src={getProductImageUrl(storeSettings.paymentQrImage)}
-                        alt="店家收款 QR Code"
-                      />
-                      <strong>應付 NT$ {totalAmount}</strong>
-                      <p>
-                        請使用付款 App
-                        掃描或辨識此圖片，確認金額後完成付款，再按下方按鈕送出訂單。
-                      </p>
-                    </div>
-                  )}
                 {storeSettings.linePayAvailable && (
                   <>
                     <label
@@ -514,9 +478,7 @@ const CartComponent = ({ currentUser }) => {
                 ? "處理中…"
                 : paymentMethod === "line_pay"
                   ? "前往 LINE Pay"
-                  : paymentMethod === "merchant_qr"
-                    ? "我已付款並送出訂單"
-                    : "送出訂單"}
+                  : "送出訂單"}
             </button>
           </div>
         </>
