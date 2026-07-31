@@ -201,6 +201,9 @@ class AuthService {
     acceptingOrders,
     paymentQrImage,
     removePaymentQr = false,
+    linePayMerchantReady,
+    linePayChannelId,
+    linePayChannelSecret,
   }) {
     const formData = new FormData();
     if (typeof acceptingOrders === "boolean") {
@@ -208,6 +211,15 @@ class AuthService {
     }
     if (paymentQrImage) formData.append("image", paymentQrImage);
     if (removePaymentQr) formData.append("removePaymentQr", "true");
+    if (typeof linePayMerchantReady === "boolean") {
+      formData.append("linePayMerchantReady", String(linePayMerchantReady));
+    }
+    if (linePayChannelId) {
+      formData.append("linePayChannelId", linePayChannelId);
+    }
+    if (linePayChannelSecret) {
+      formData.append("linePayChannelSecret", linePayChannelSecret);
+    }
 
     return axios.patch(API_URL + "/settings", formData, {
       headers: {

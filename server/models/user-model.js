@@ -59,6 +59,24 @@ const userSchema = new Schema(
       default: "",
       select: false,
     },
+    linePayMerchantReady: {
+      type: Boolean,
+      default: false,
+    },
+    linePayConfigured: {
+      type: Boolean,
+      default: false,
+    },
+    linePayChannelIdHint: {
+      type: String,
+      default: "",
+      maxlength: 8,
+    },
+    linePayCredentialsEncrypted: {
+      type: String,
+      default: "",
+      select: false,
+    },
     tableNumber: {
       type: Number,
       default: null,

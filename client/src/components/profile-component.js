@@ -31,8 +31,15 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
   const [settings, setSettings] = useState({
     acceptingOrders: true,
     paymentQrImage: "",
+    linePayAvailable: false,
+    linePayMerchantReady: false,
+    linePayConfigured: false,
+    linePayChannelIdHint: "",
   });
   const [paymentQrFile, setPaymentQrFile] = useState(null);
+  const [paymentSetup, setPaymentSetup] = useState("qr");
+  const [linePayChannelId, setLinePayChannelId] = useState("");
+  const [linePayChannelSecret, setLinePayChannelSecret] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -53,7 +60,10 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
     if (!isSeller) return;
 
     AuthService.getSellerSettings()
-      .then((response) => setSettings(response.data))
+      .then((response) => {
+        setSettings(response.data);
+        setPaymentSetup(response.data.linePayMerchantReady ? "line_pay" : "qr");
+      })
       .catch((error) => {
         console.error(error);
         setMessage("店家設定載入失敗");
@@ -73,18 +83,31 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
   const saveStoreSettings = async ({
     acceptingOrders = settings.acceptingOrders,
     removePaymentQr = false,
+    paymentQrImage = null,
+    linePayMerchantReady,
+    linePayChannelId: nextLinePayChannelId,
+    linePayChannelSecret: nextLinePayChannelSecret,
+    successMessage = "店家設定已儲存",
   } = {}) => {
     setSaving(true);
     setMessage("");
     try {
       const response = await AuthService.updateSellerSettings({
         acceptingOrders,
-        paymentQrImage: paymentQrFile,
+        paymentQrImage,
         removePaymentQr,
+        linePayMerchantReady,
+        linePayChannelId: nextLinePayChannelId,
+        linePayChannelSecret: nextLinePayChannelSecret,
       });
       setSettings(response.data);
+      setPaymentSetup(response.data.linePayMerchantReady ? "line_pay" : "qr");
       setPaymentQrFile(null);
-      setMessage("店家設定已儲存");
+      if (typeof linePayMerchantReady === "boolean") {
+        setLinePayChannelId("");
+        setLinePayChannelSecret("");
+      }
+      setMessage(successMessage);
     } catch (error) {
       setMessage(
         error.response?.data?.message || error.response?.data || "設定儲存失敗"
@@ -92,6 +115,41 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const savePaymentSettings = async () => {
+    if (paymentSetup === "line_pay") {
+      const hasChannelId = Boolean(linePayChannelId.trim());
+      const hasChannelSecret = Boolean(linePayChannelSecret.trim());
+      if (hasChannelId !== hasChannelSecret) {
+        setMessage("請同時輸入 Channel ID 與 Channel Secret");
+        return;
+      }
+      if (!settings.linePayConfigured && !hasChannelId) {
+        setMessage("請輸入 LINE Pay 網路串接金鑰");
+        return;
+      }
+    } else if (
+      settings.linePayConfigured &&
+      !window.confirm(
+        "改用收款碼後，已儲存的 LINE Pay 串接金鑰會被移除。確定繼續嗎？"
+      )
+    ) {
+      return;
+    }
+
+    await saveStoreSettings({
+      paymentQrImage: paymentSetup === "qr" ? paymentQrFile : null,
+      linePayMerchantReady: paymentSetup === "line_pay",
+      linePayChannelId:
+        paymentSetup === "line_pay" ? linePayChannelId : undefined,
+      linePayChannelSecret:
+        paymentSetup === "line_pay" ? linePayChannelSecret : undefined,
+      successMessage:
+        paymentSetup === "line_pay"
+          ? "自動 LINE Pay 設定已儲存"
+          : "收款碼設定已儲存",
+    });
   };
 
   const handleChangePassword = async (event) => {
@@ -277,48 +335,164 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
 
             <section className="profile-settings-card">
               <div>
-                <p className="ui-eyebrow">店家收款碼</p>
-                <h2>掃碼付款</h2>
+                <p className="ui-eyebrow">付款設定</p>
+                <h2>店家如何收款？</h2>
                 <p>
-                  上傳店家自己的 LINE Pay、街口或其他收款 QR
-                  Code。款項會直接進入店家的收款帳戶，店家需人工確認。
+                  依照是否已取得 LINE Pay 網路串接金鑰，選擇適合的收款方式。
                 </p>
               </div>
-              {settings.paymentQrImage && (
-                <img
-                  className="seller-payment-qr"
-                  src={getProductImageUrl(settings.paymentQrImage)}
-                  alt="店家收款 QR Code"
-                />
+
+              <fieldset className="profile-payment-choice-group">
+                <legend>是否已申請好 LINE Pay 合作商店及網路串接金鑰？</legend>
+                <label
+                  className={`profile-payment-choice${
+                    paymentSetup === "qr" ? " is-selected" : ""
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentSetup"
+                    value="qr"
+                    checked={paymentSetup === "qr"}
+                    onChange={() => setPaymentSetup("qr")}
+                  />
+                  <span>
+                    <strong>尚未申請好</strong>
+                    <small>上傳自己的收款 QR Code，由店家人工確認款項。</small>
+                  </span>
+                </label>
+                <label
+                  className={`profile-payment-choice${
+                    paymentSetup === "line_pay" ? " is-selected" : ""
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentSetup"
+                    value="line_pay"
+                    checked={paymentSetup === "line_pay"}
+                    onChange={() => setPaymentSetup("line_pay")}
+                  />
+                  <span>
+                    <strong>已申請好</strong>
+                    <small>
+                      輸入 Channel ID 與 Channel Secret，自動確認 LINE Pay
+                      付款。
+                    </small>
+                  </span>
+                </label>
+              </fieldset>
+
+              {paymentSetup === "qr" ? (
+                <div className="profile-payment-setup-panel">
+                  <p>
+                    可上傳 LINE Pay、街口、銀行或其他收款 QR
+                    Code。款項會直接進入該收款帳戶。
+                  </p>
+                  {settings.paymentQrImage && (
+                    <img
+                      className="seller-payment-qr"
+                      src={getProductImageUrl(settings.paymentQrImage)}
+                      alt="店家收款 QR Code"
+                    />
+                  )}
+                  <label className="profile-settings-field">
+                    <span>選擇收款碼圖片</span>
+                    <input
+                      type="file"
+                      className="form-control"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      onChange={(event) =>
+                        setPaymentQrFile(event.target.files?.[0] || null)
+                      }
+                    />
+                  </label>
+                  {settings.paymentQrImage && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-danger"
+                      disabled={saving}
+                      onClick={() =>
+                        saveStoreSettings({
+                          removePaymentQr: true,
+                          successMessage: "收款碼已移除",
+                        })
+                      }
+                    >
+                      移除收款碼
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="profile-payment-setup-panel">
+                  <div
+                    className={`profile-payment-status${
+                      settings.linePayConfigured ? " is-ready" : ""
+                    }`}
+                  >
+                    {settings.linePayConfigured
+                      ? `已儲存 LINE Pay 金鑰（Channel ID 尾碼 ${settings.linePayChannelIdHint}）`
+                      : "尚未設定 LINE Pay 網路串接金鑰"}
+                  </div>
+                  <label className="profile-settings-field">
+                    <span>Channel ID</span>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={linePayChannelId}
+                      placeholder={
+                        settings.linePayConfigured
+                          ? "留空表示不更換"
+                          : "輸入 LINE Pay Channel ID"
+                      }
+                      maxLength={100}
+                      autoComplete="off"
+                      onChange={(event) =>
+                        setLinePayChannelId(event.target.value)
+                      }
+                    />
+                  </label>
+                  <label className="profile-settings-field">
+                    <span>Channel Secret</span>
+                    <input
+                      type="password"
+                      className="form-control"
+                      value={linePayChannelSecret}
+                      placeholder={
+                        settings.linePayConfigured
+                          ? "留空表示不更換"
+                          : "輸入 LINE Pay Channel Secret"
+                      }
+                      maxLength={300}
+                      autoComplete="new-password"
+                      onChange={(event) =>
+                        setLinePayChannelSecret(event.target.value)
+                      }
+                    />
+                  </label>
+                  <p className="profile-payment-security-note">
+                    金鑰會加密保存，儲存後不會再次顯示完整內容。
+                  </p>
+                </div>
               )}
-              <label className="profile-settings-field">
-                <span>選擇收款碼圖片</span>
-                <input
-                  type="file"
-                  className="form-control"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
-                  onChange={(event) =>
-                    setPaymentQrFile(event.target.files?.[0] || null)
-                  }
-                />
-              </label>
+
               <div className="profile-inline-actions">
                 <button
                   type="button"
                   className="btn btn-primary"
-                  disabled={saving || !paymentQrFile}
-                  onClick={() => saveStoreSettings()}
+                  disabled={saving}
+                  onClick={savePaymentSettings}
                 >
-                  儲存收款碼
+                  儲存付款設定
                 </button>
-                {settings.paymentQrImage && (
+                {paymentSetup === "line_pay" && settings.linePayConfigured && (
                   <button
                     type="button"
                     className="btn btn-outline-danger"
                     disabled={saving}
-                    onClick={() => saveStoreSettings({ removePaymentQr: true })}
+                    onClick={() => setPaymentSetup("qr")}
                   >
-                    移除收款碼
+                    改用收款碼
                   </button>
                 )}
               </div>

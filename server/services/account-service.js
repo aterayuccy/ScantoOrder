@@ -10,6 +10,11 @@ const {
   storeUploadedImage,
   verifyUploadedImage,
 } = require("./product-image-service");
+const {
+  encryptPaymentCredentials,
+  hasPaymentCredentialEncryptionKey,
+  PaymentCredentialError,
+} = require("./payment-credential-service");
 
 class AccountError extends Error {
   constructor(message, statusCode = 400) {
@@ -26,16 +31,55 @@ const toPaymentQrStorage = (user) => ({
   imageStorage: user.paymentQrImageStorage,
 });
 
-const getSellerSettings = async (sellerId) => {
+const normalizeLinePayCredentials = (channelId, channelSecret) => {
+  const normalizedChannelId = String(channelId || "").trim();
+  const normalizedChannelSecret = String(channelSecret || "").trim();
+
+  if (!normalizedChannelId || !normalizedChannelSecret) {
+    throw new AccountError("請同時輸入 Channel ID 與 Channel Secret");
+  }
+  if (normalizedChannelId.length < 4 || normalizedChannelId.length > 100) {
+    throw new AccountError("Channel ID 格式不正確");
+  }
+  if (
+    normalizedChannelSecret.length < 16 ||
+    normalizedChannelSecret.length > 300
+  ) {
+    throw new AccountError("Channel Secret 格式不正確");
+  }
+
+  return {
+    channelId: normalizedChannelId,
+    channelSecret: normalizedChannelSecret,
+    environment: "production",
+  };
+};
+
+const getSellerSettings = async (
+  sellerId,
+  { includeLinePayDetails = false } = {}
+) => {
   const seller = await User.findOne({ _id: sellerId, role: "seller" }).lean();
   if (!seller) throw new AccountError("找不到店家", 404);
 
-  return {
+  const settings = {
     sellerId: seller._id,
     username: seller.username,
     acceptingOrders: seller.acceptingOrders !== false,
     paymentQrImage: seller.paymentQrImage || "",
+    linePayAvailable:
+      seller.linePayMerchantReady === true &&
+      seller.linePayConfigured === true &&
+      hasPaymentCredentialEncryptionKey(),
   };
+
+  if (includeLinePayDetails) {
+    settings.linePayMerchantReady = seller.linePayMerchantReady === true;
+    settings.linePayConfigured = seller.linePayConfigured === true;
+    settings.linePayChannelIdHint = seller.linePayChannelIdHint || "";
+  }
+
+  return settings;
 };
 
 const updateSellerSettings = async ({
@@ -43,9 +87,12 @@ const updateSellerSettings = async ({
   acceptingOrders,
   removePaymentQr,
   file,
+  linePayMerchantReady,
+  linePayChannelId,
+  linePayChannelSecret,
 }) => {
   const seller = await User.findOne({ _id: sellerId, role: "seller" }).select(
-    "+paymentQrImagePublicId"
+    "+paymentQrImagePublicId +linePayCredentialsEncrypted"
   );
   if (!seller) throw new AccountError("找不到店家", 404);
 
@@ -55,6 +102,51 @@ const updateSellerSettings = async ({
   try {
     if (typeof acceptingOrders === "boolean") {
       seller.acceptingOrders = acceptingOrders;
+    }
+
+    if (typeof linePayMerchantReady === "boolean") {
+      if (!linePayMerchantReady) {
+        seller.linePayMerchantReady = false;
+        seller.linePayConfigured = false;
+        seller.linePayChannelIdHint = "";
+        seller.linePayCredentialsEncrypted = "";
+      } else {
+        const hasNewChannelId = Boolean(String(linePayChannelId || "").trim());
+        const hasNewChannelSecret = Boolean(
+          String(linePayChannelSecret || "").trim()
+        );
+
+        if (hasNewChannelId !== hasNewChannelSecret) {
+          throw new AccountError(
+            "更新 LINE Pay 時，請同時輸入 Channel ID 與 Channel Secret"
+          );
+        }
+
+        if (hasNewChannelId && hasNewChannelSecret) {
+          const credentials = normalizeLinePayCredentials(
+            linePayChannelId,
+            linePayChannelSecret
+          );
+          try {
+            seller.linePayCredentialsEncrypted =
+              encryptPaymentCredentials(credentials);
+          } catch (error) {
+            if (error instanceof PaymentCredentialError) {
+              throw new AccountError(error.message, 503);
+            }
+            throw error;
+          }
+          seller.linePayChannelIdHint = credentials.channelId.slice(-4);
+          seller.linePayConfigured = true;
+        } else if (
+          !seller.linePayConfigured ||
+          !seller.linePayCredentialsEncrypted
+        ) {
+          throw new AccountError("請輸入 LINE Pay 網路串接金鑰");
+        }
+
+        seller.linePayMerchantReady = true;
+      }
     }
 
     if (file) {
@@ -75,7 +167,7 @@ const updateSellerSettings = async ({
       await deleteStoredImage(previousImage);
     }
 
-    return getSellerSettings(sellerId);
+    return getSellerSettings(sellerId, { includeLinePayDetails: true });
   } catch (error) {
     if (storedImage?.image) await deleteStoredImage(storedImage);
     throw error;

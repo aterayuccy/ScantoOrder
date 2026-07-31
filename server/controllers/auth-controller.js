@@ -114,7 +114,11 @@ const deleteAccount = async (req, res, next) => {
 
 const getSettings = async (req, res, next) => {
   try {
-    return res.send(await getSellerSettings(req.user._id));
+    return res.send(
+      await getSellerSettings(req.user._id, {
+        includeLinePayDetails: true,
+      })
+    );
   } catch (error) {
     return next(error);
   }
@@ -148,6 +152,12 @@ const updateSettings = async (req, res, next) => {
         sellerId: req.user._id,
         acceptingOrders: parseBoolean(req.body.acceptingOrders, undefined),
         removePaymentQr: parseBoolean(req.body.removePaymentQr, false),
+        linePayMerchantReady: parseBoolean(
+          req.body.linePayMerchantReady,
+          undefined
+        ),
+        linePayChannelId: req.body.linePayChannelId,
+        linePayChannelSecret: req.body.linePayChannelSecret,
         file: req.file,
       })
     );
