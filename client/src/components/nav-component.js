@@ -3,6 +3,11 @@ import { Link, useLocation } from "react-router-dom";
 
 import AuthService from "../services/auth.service";
 import ProductService from "../services/product.service";
+import {
+  SELLER_ONBOARDING_STAGES,
+  setSellerOnboardingStage,
+  useSellerOnboardingStage,
+} from "../onboarding/seller-onboarding";
 
 const getInitial = (username = "") =>
   Array.from(String(username).trim())[0]?.toUpperCase() || "?";
@@ -13,14 +18,19 @@ const NavComponent = ({ currentUser }) => {
   const location = useLocation();
   const user = currentUser?.user;
   const isSeller = user?.role === "seller";
+  const onboardingStage = useSellerOnboardingStage(currentUser);
+  const guideHeaderActive = [
+    SELLER_ONBOARDING_STAGES.QR_NAV,
+    SELLER_ONBOARDING_STAGES.PROFILE_NAV,
+  ].includes(onboardingStage);
   const selectedType = useMemo(
     () => new URLSearchParams(location.search).get("type") || "",
     [location.search]
   );
 
   useEffect(() => {
-    setMenuOpen(false);
-  }, [location.pathname, location.search]);
+    setMenuOpen(guideHeaderActive);
+  }, [guideHeaderActive, location.pathname, location.search, onboardingStage]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -57,7 +67,9 @@ const NavComponent = ({ currentUser }) => {
   const buyerNavigation = () => AuthService.markQrBuyerNavigation();
 
   return (
-    <header className="app-header">
+    <header
+      className={`app-header${guideHeaderActive ? " seller-guide-header" : ""}`}
+    >
       <div className="app-nav-shell">
         <Link
           className="app-brand"
@@ -116,8 +128,20 @@ const NavComponent = ({ currentUser }) => {
                 <Link
                   className={`app-nav-link${
                     isActive("/qrcode") ? " is-active" : ""
+                  }${
+                    onboardingStage === SELLER_ONBOARDING_STAGES.QR_NAV
+                      ? " seller-guide-target"
+                      : ""
                   }`}
                   to="/qrcode"
+                  onClick={() => {
+                    if (onboardingStage === SELLER_ONBOARDING_STAGES.QR_NAV) {
+                      setSellerOnboardingStage(
+                        user._id,
+                        SELLER_ONBOARDING_STAGES.QR_CREATE
+                      );
+                    }
+                  }}
                 >
                   QR Code
                 </Link>
@@ -146,9 +170,21 @@ const NavComponent = ({ currentUser }) => {
           <Link
             className={`app-profile-link${
               isActive("/profile") ? " is-active" : ""
+            }${
+              onboardingStage === SELLER_ONBOARDING_STAGES.PROFILE_NAV
+                ? " seller-guide-target"
+                : ""
             }`}
             to="/profile"
             title="個人頁面"
+            onClick={() => {
+              if (onboardingStage === SELLER_ONBOARDING_STAGES.PROFILE_NAV) {
+                setSellerOnboardingStage(
+                  user._id,
+                  SELLER_ONBOARDING_STAGES.PAYMENT
+                );
+              }
+            }}
           >
             <span className="app-profile-avatar" aria-hidden="true">
               {getInitial(user?.username)}

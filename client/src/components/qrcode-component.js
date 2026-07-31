@@ -3,6 +3,11 @@ import { Navigate } from "react-router-dom";
 import { QRCodeCanvas } from "qrcode.react";
 
 import AuthService from "../services/auth.service";
+import {
+  SELLER_ONBOARDING_STAGES,
+  setSellerOnboardingStage,
+  useSellerOnboardingStage,
+} from "../onboarding/seller-onboarding";
 
 const buildQrCardCanvas = (qrCanvas, tableNumber, shopName) => {
   const scale = 2;
@@ -65,7 +70,10 @@ const buildQrCardCanvas = (qrCanvas, tableNumber, shopName) => {
 };
 
 const QRCodeComponent = ({ currentUser }) => {
+  const onboardingStage = useSellerOnboardingStage(currentUser);
+  const [createMode, setCreateMode] = useState("sequential");
   const [count, setCount] = useState("");
+  const [specificTableNumber, setSpecificTableNumber] = useState("");
   const [qrList, setQrList] = useState([]);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("warning");
@@ -108,14 +116,33 @@ const QRCodeComponent = ({ currentUser }) => {
     };
   }, [currentUser]);
 
+  useEffect(() => {
+    if (onboardingStage === SELLER_ONBOARDING_STAGES.QR_CREATE) {
+      setCreateMode("sequential");
+    }
+  }, [onboardingStage]);
+
   if (!currentUser) return <Navigate to="/login" />;
   if (currentUser.user.role !== "seller") return <Navigate to="/" />;
 
   const handleGenerate = async () => {
+    const isSequential = createMode === "sequential";
     const total = Number(count);
+    const tableNumber = Number(specificTableNumber);
 
-    if (!Number.isInteger(total) || total < 1 || total > 100) {
+    if (
+      isSequential &&
+      (!Number.isInteger(total) || total < 1 || total > 100)
+    ) {
       setMessage("請輸入 1～100 之間的整數。");
+      setMessageType("warning");
+      return;
+    }
+    if (
+      !isSequential &&
+      (!Number.isInteger(tableNumber) || tableNumber < 1 || tableNumber > 9999)
+    ) {
+      setMessage("請輸入 1～9999 之間的桌號。");
       setMessageType("warning");
       return;
     }
@@ -123,11 +150,30 @@ const QRCodeComponent = ({ currentUser }) => {
     try {
       setIsGenerating(true);
       setMessage("");
-      const response = await AuthService.createQrToken(total, currentUser);
+      const response = await AuthService.createQrToken(
+        isSequential
+          ? { mode: "sequential", count: total }
+          : { mode: "specific", tableNumber },
+        currentUser
+      );
       setQrList(response.data.qrCodes || []);
       setCount("");
-      setMessage(`已新增 ${total} 個桌號 QR Code。`);
+      setSpecificTableNumber("");
+      setMessage(
+        isSequential
+          ? `已依序新增 ${total} 個桌號 QR Code。`
+          : `已新增桌號 ${tableNumber} 的 QR Code。`
+      );
       setMessageType("success");
+      if (
+        isSequential &&
+        onboardingStage === SELLER_ONBOARDING_STAGES.QR_CREATE
+      ) {
+        setSellerOnboardingStage(
+          currentUser.user._id,
+          SELLER_ONBOARDING_STAGES.QR_REVIEW
+        );
+      }
     } catch (error) {
       console.error(error);
       setMessage(error?.response?.data || "產生 QR Code 失敗。");
@@ -182,6 +228,17 @@ const QRCodeComponent = ({ currentUser }) => {
     link.download = `桌號-${qrCode.tableNumber}-QRCode.png`;
     link.href = outputCanvas.toDataURL("image/png");
     link.click();
+
+    if (
+      onboardingStage === SELLER_ONBOARDING_STAGES.QR_REVIEW &&
+      qrCode.tableNumber ===
+        Math.min(...qrList.map((item) => Number(item.tableNumber)))
+    ) {
+      setSellerOnboardingStage(
+        currentUser.user._id,
+        SELLER_ONBOARDING_STAGES.PROFILE_NAV
+      );
+    }
   };
 
   const handleDownloadPdf = async () => {
@@ -255,6 +312,11 @@ const QRCodeComponent = ({ currentUser }) => {
     }
   };
 
+  const minimumTableNumber =
+    qrList.length > 0
+      ? Math.min(...qrList.map((item) => Number(item.tableNumber)))
+      : null;
+
   return (
     <main className="app-page qr-code-page">
       <div className="app-page__inner">
@@ -279,33 +341,102 @@ const QRCodeComponent = ({ currentUser }) => {
           </div>
         </header>
 
-        <section className="ui-card qr-control-card">
+        <section
+          className={`ui-card qr-control-card${
+            onboardingStage === SELLER_ONBOARDING_STAGES.QR_CREATE
+              ? " seller-guide-target"
+              : ""
+          }`}
+        >
           <div>
             <h2>新增桌號</h2>
-            <p>輸入要新增的數量，系統會接續目前最大的桌號。</p>
+            <p>
+              {createMode === "sequential"
+                ? "輸入要新增的數量，系統會接續目前最大的桌號。"
+                : "輸入指定桌號，可補回已刪除或需要對應的號碼。"}
+            </p>
           </div>
-          <div className="qr-generate-control">
-            <input
-              type="number"
-              min="1"
-              max="100"
-              className="form-control"
-              placeholder="新增數量"
-              value={count}
-              onChange={(event) => setCount(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") handleGenerate();
-              }}
-              aria-label="新增 QR Code 數量"
-            />
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={handleGenerate}
-              disabled={isGenerating}
-            >
-              {isGenerating ? "產生中…" : "產生"}
-            </button>
+          <div className="qr-create-settings">
+            <fieldset className="qr-create-mode">
+              <legend>新增方式</legend>
+              <label
+                className={createMode === "sequential" ? "is-selected" : ""}
+              >
+                <input
+                  type="radio"
+                  name="qrCreateMode"
+                  value="sequential"
+                  checked={createMode === "sequential"}
+                  onChange={() => setCreateMode("sequential")}
+                />
+                <span>
+                  <strong>依序新增</strong>
+                  <small>從目前最大桌號繼續增加</small>
+                </span>
+              </label>
+              <label className={createMode === "specific" ? "is-selected" : ""}>
+                <input
+                  type="radio"
+                  name="qrCreateMode"
+                  value="specific"
+                  checked={createMode === "specific"}
+                  disabled={
+                    onboardingStage === SELLER_ONBOARDING_STAGES.QR_CREATE
+                  }
+                  onChange={() => setCreateMode("specific")}
+                />
+                <span>
+                  <strong>對應桌號新增</strong>
+                  <small>直接建立指定的桌號</small>
+                </span>
+              </label>
+            </fieldset>
+
+            <div className="qr-generate-control">
+              {createMode === "sequential" ? (
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  className="form-control"
+                  placeholder="新增數量"
+                  value={count}
+                  onChange={(event) => setCount(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") handleGenerate();
+                  }}
+                  aria-label="新增 QR Code 數量"
+                />
+              ) : (
+                <input
+                  type="number"
+                  min="1"
+                  max="9999"
+                  className="form-control"
+                  placeholder="輸入桌號"
+                  value={specificTableNumber}
+                  onChange={(event) =>
+                    setSpecificTableNumber(event.target.value)
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") handleGenerate();
+                  }}
+                  aria-label="指定新增桌號"
+                />
+              )}
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleGenerate}
+                disabled={isGenerating}
+              >
+                {isGenerating
+                  ? "產生中…"
+                  : createMode === "sequential"
+                    ? "依序產生"
+                    : "新增指定桌號"}
+              </button>
+            </div>
           </div>
         </section>
 
@@ -326,47 +457,64 @@ const QRCodeComponent = ({ currentUser }) => {
               ▦
             </span>
             <h2>還沒有桌號 QR Code</h2>
-            <p>從上方輸入新增數量，即可建立第一批桌號。</p>
+            <p>從上方選擇新增方式，即可建立第一批桌號。</p>
           </section>
         ) : (
           <section className="qr-code-grid">
-            {qrList.map((item) => (
-              <article
-                key={item._id}
-                ref={(node) => {
-                  if (node) qrCardRefs.current.set(item._id, node);
-                  else qrCardRefs.current.delete(item._id);
-                }}
-                className="qr-code-card"
-              >
-                <div className="qr-code-card__header">
-                  <div>
-                    <span>桌號</span>
-                    <h2>{item.tableNumber}</h2>
+            {qrList.map((item) => {
+              const isGuideTarget =
+                onboardingStage === SELLER_ONBOARDING_STAGES.QR_REVIEW &&
+                Number(item.tableNumber) === minimumTableNumber;
+
+              return (
+                <article
+                  key={item._id}
+                  ref={(node) => {
+                    if (node) qrCardRefs.current.set(item._id, node);
+                    else qrCardRefs.current.delete(item._id);
+                  }}
+                  className={`qr-code-card${
+                    isGuideTarget
+                      ? " seller-guide-target seller-guide-qr-card"
+                      : ""
+                  }`}
+                >
+                  {isGuideTarget && (
+                    <span className="seller-guide-qr-label">
+                      先下載最小桌號
+                    </span>
+                  )}
+                  <div className="qr-code-card__header">
+                    <div>
+                      <span>桌號</span>
+                      <h2>{item.tableNumber}</h2>
+                    </div>
+                    <button
+                      type="button"
+                      className={`btn btn-sm btn-outline-secondary${
+                        isGuideTarget ? " seller-guide-allowed-action" : ""
+                      }`}
+                      onClick={() => handleDownload(item)}
+                    >
+                      下載
+                    </button>
                   </div>
+
+                  <div className="qr-code-canvas">
+                    <QRCodeCanvas value={buildQrUrl(item.token)} size={220} />
+                  </div>
+
                   <button
                     type="button"
-                    className="btn btn-sm btn-outline-secondary"
-                    onClick={() => handleDownload(item)}
+                    className="btn btn-outline-danger"
+                    onClick={() => handleDelete(item)}
+                    disabled={deletingQrCodeId === item._id || isGenerating}
                   >
-                    下載
+                    {deletingQrCodeId === item._id ? "刪除中…" : "刪除桌號"}
                   </button>
-                </div>
-
-                <div className="qr-code-canvas">
-                  <QRCodeCanvas value={buildQrUrl(item.token)} size={220} />
-                </div>
-
-                <button
-                  type="button"
-                  className="btn btn-outline-danger"
-                  onClick={() => handleDelete(item)}
-                  disabled={deletingQrCodeId === item._id || isGenerating}
-                >
-                  {deletingQrCodeId === item._id ? "刪除中…" : "刪除桌號"}
-                </button>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </section>
         )}
       </div>

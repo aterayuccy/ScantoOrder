@@ -263,18 +263,14 @@ class AuthService {
     });
   }
 
-  createQrToken(count, currentUser) {
+  createQrToken(input, currentUser) {
     const token = getSellerToken(currentUser);
 
-    return axios.post(
-      API_URL + "/create-qr-token",
-      { count },
-      {
-        headers: {
-          Authorization: "jwt " + token,
-        },
-      }
-    );
+    return axios.post(API_URL + "/create-qr-token", input, {
+      headers: {
+        Authorization: "jwt " + token,
+      },
+    });
   }
 
   deleteQrCode(qrCodeId, currentUser) {

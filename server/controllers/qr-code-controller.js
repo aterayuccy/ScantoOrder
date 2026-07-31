@@ -25,21 +25,41 @@ const listQrCodes = async (req, res) => {
 
 const createQrCodes = async (req, res) => {
   try {
-    const { count } = req.validatedBody;
-    const lastQrCode = await QrCode.findOne({ seller: req.user._id })
-      .sort({ tableNumber: -1 })
-      .exec();
-    const startTableNumber = lastQrCode ? lastQrCode.tableNumber + 1 : 1;
+    const { count, mode, tableNumber } = req.validatedBody;
+    let tableNumbers;
 
-    const qrCodesToCreate = Array.from({ length: count }, (_, index) => ({
+    if (mode === "specific") {
+      const existingQrCode = await QrCode.findOne({
+        seller: req.user._id,
+        tableNumber,
+      }).exec();
+      if (existingQrCode) {
+        return res.status(409).send(`桌號 ${tableNumber} 已存在`);
+      }
+      tableNumbers = [tableNumber];
+    } else {
+      const lastQrCode = await QrCode.findOne({ seller: req.user._id })
+        .sort({ tableNumber: -1 })
+        .exec();
+      const startTableNumber = lastQrCode ? lastQrCode.tableNumber + 1 : 1;
+      tableNumbers = Array.from(
+        { length: count },
+        (_, index) => startTableNumber + index
+      );
+    }
+
+    const qrCodesToCreate = tableNumbers.map((nextTableNumber) => ({
       seller: req.user._id,
-      tableNumber: startTableNumber + index,
+      tableNumber: nextTableNumber,
       token: crypto.randomBytes(32).toString("hex"),
     }));
 
     await QrCode.insertMany(qrCodesToCreate);
     return listQrCodes(req, res);
   } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(409).send("這個桌號已存在");
+    }
     console.error("create QR codes error:", error);
     return res.status(500).send("產生 QR code 失敗");
   }
