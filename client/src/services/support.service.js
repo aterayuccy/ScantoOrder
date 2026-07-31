@@ -36,6 +36,12 @@ class SupportService {
       headers: { "x-support-admin-key": adminKey },
     });
   }
+
+  deleteAdminTicket(adminKey, ticketId) {
+    return axios.delete(`${API_URL}/admin/tickets/${ticketId}`, {
+      headers: { "x-support-admin-key": adminKey },
+    });
+  }
 }
 
 const supportService = new SupportService();

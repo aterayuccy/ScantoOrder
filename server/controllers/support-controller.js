@@ -46,8 +46,21 @@ const updateTicket = async (req, res, next) => {
   }
 };
 
+const deleteTicket = async (req, res, next) => {
+  try {
+    return res.send(
+      await supportService.deleteTicket({
+        ticketId: req.params.ticketId,
+      })
+    );
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   createTicket,
+  deleteTicket,
   listAdminTickets,
   listSellerTickets,
   updateTicket,
