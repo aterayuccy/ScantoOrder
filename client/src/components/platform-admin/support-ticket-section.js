@@ -72,12 +72,32 @@ const SupportTicketSection = ({ adminKey, onChanged }) => {
           status: ticketStatus,
         }
       );
+      let updatedTicket = response.data;
+
+      if (
+        reply.trim() &&
+        updatedTicket.status !== "closed" &&
+        window.confirm("回覆已儲存。這個問題是否已處理完成並結案？")
+      ) {
+        const closeResponse = await SupportService.updateAdminTicket(
+          adminKey,
+          selectedTicket._id,
+          { status: "closed" }
+        );
+        updatedTicket = closeResponse.data;
+      }
+
       setTickets((current) =>
         current.map((ticket) =>
-          ticket._id === response.data._id ? response.data : ticket
+          ticket._id === updatedTicket._id ? updatedTicket : ticket
         )
       );
-      setMessage("問題單已更新，店家下次開啟客服時即可看到回覆。");
+      setTicketStatus(updatedTicket.status);
+      setMessage(
+        updatedTicket.status === "closed"
+          ? "回覆已儲存，問題單已結案。"
+          : "回覆已儲存，問題單目前為已回覆。"
+      );
       onChanged?.();
     } catch (error) {
       setMessage(

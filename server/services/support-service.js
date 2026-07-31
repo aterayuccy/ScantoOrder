@@ -50,9 +50,11 @@ const updateTicket = async ({ ticketId, input }) => {
   if (Object.prototype.hasOwnProperty.call(input, "adminReply")) {
     ticket.adminReply = input.adminReply;
     ticket.repliedAt = input.adminReply ? new Date() : null;
-    if (input.adminReply && !input.status) ticket.status = "answered";
   }
   if (input.status) ticket.status = input.status;
+  if (input.adminReply && ticket.status === "open") {
+    ticket.status = "answered";
+  }
 
   await ticket.save();
   return ticket;

@@ -291,14 +291,17 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
                   alt="店家收款 QR Code"
                 />
               )}
-              <input
-                type="file"
-                className="form-control"
-                accept="image/png,image/jpeg,image/webp,image/gif"
-                onChange={(event) =>
-                  setPaymentQrFile(event.target.files?.[0] || null)
-                }
-              />
+              <label className="profile-settings-field">
+                <span>選擇收款碼圖片</span>
+                <input
+                  type="file"
+                  className="form-control"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  onChange={(event) =>
+                    setPaymentQrFile(event.target.files?.[0] || null)
+                  }
+                />
+              </label>
               <div className="profile-inline-actions">
                 <button
                   type="button"
@@ -330,37 +333,44 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
                 <h2>修改密碼</h2>
                 <p>修改後，其他裝置上的登入會失效。</p>
               </div>
-              <input
-                type="password"
-                className="form-control"
-                placeholder="目前密碼"
-                value={currentPassword}
-                onChange={(event) => setCurrentPassword(event.target.value)}
-                autoComplete="current-password"
-                required
-              />
-              <input
-                type="password"
-                className="form-control"
-                placeholder="新密碼（8～64 字，包含英文與數字）"
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-                autoComplete="new-password"
-                minLength={8}
-                maxLength={64}
-                required
-              />
-              <input
-                type="password"
-                className="form-control"
-                placeholder="再次輸入新密碼"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                autoComplete="new-password"
-                minLength={8}
-                maxLength={64}
-                required
-              />
+              <label className="profile-settings-field">
+                <span>目前密碼</span>
+                <input
+                  type="password"
+                  className="form-control"
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                  autoComplete="current-password"
+                  required
+                />
+              </label>
+              <label className="profile-settings-field">
+                <span>新密碼</span>
+                <input
+                  type="password"
+                  className="form-control"
+                  placeholder="8～64 字，包含英文與數字"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  autoComplete="new-password"
+                  minLength={8}
+                  maxLength={64}
+                  required
+                />
+              </label>
+              <label className="profile-settings-field">
+                <span>再次輸入新密碼</span>
+                <input
+                  type="password"
+                  className="form-control"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  autoComplete="new-password"
+                  minLength={8}
+                  maxLength={64}
+                  required
+                />
+              </label>
               <button className="btn btn-primary" disabled={saving}>
                 修改密碼
               </button>
@@ -385,15 +395,17 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
                   />
                 </>
               )}
-              <input
-                type="password"
-                className="form-control"
-                placeholder="輸入目前密碼"
-                value={recoveryPassword}
-                onChange={(event) => setRecoveryPassword(event.target.value)}
-                autoComplete="current-password"
-                required
-              />
+              <label className="profile-settings-field">
+                <span>目前密碼</span>
+                <input
+                  type="password"
+                  className="form-control"
+                  value={recoveryPassword}
+                  onChange={(event) => setRecoveryPassword(event.target.value)}
+                  autoComplete="current-password"
+                  required
+                />
+              </label>
               <button
                 type="button"
                 className="btn btn-outline-primary"
@@ -413,15 +425,17 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
                 <h2>刪除帳號</h2>
                 <p>將永久刪除菜單、桌號 QR Code、訂單及付款紀錄，無法復原。</p>
               </div>
-              <input
-                type="password"
-                className="form-control"
-                placeholder="輸入密碼確認刪除"
-                value={deletePassword}
-                onChange={(event) => setDeletePassword(event.target.value)}
-                autoComplete="current-password"
-                required
-              />
+              <label className="profile-settings-field">
+                <span>輸入密碼確認刪除</span>
+                <input
+                  type="password"
+                  className="form-control"
+                  value={deletePassword}
+                  onChange={(event) => setDeletePassword(event.target.value)}
+                  autoComplete="current-password"
+                  required
+                />
+              </label>
               <button className="btn btn-danger" disabled={saving}>
                 永久刪除帳號
               </button>
