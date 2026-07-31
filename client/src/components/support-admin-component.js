@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import PlatformAdminService from "../services/platform-admin.service";
@@ -6,6 +6,7 @@ import StoreDirectorySection from "./platform-admin/store-directory-section";
 import SupportTicketSection from "./platform-admin/support-ticket-section";
 
 const ADMIN_KEY_STORAGE = "supportAdminKey";
+const STORE_REFRESH_INTERVAL_MS = 15_000;
 
 const SupportAdminComponent = () => {
   const [adminKey, setAdminKey] = useState(
@@ -16,12 +17,16 @@ const SupportAdminComponent = () => {
   const [storeData, setStoreData] = useState({ total: 0, stores: [] });
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const storeRequestInProgress = useRef(false);
 
-  const loadStores = async (key = adminKey) => {
-    if (!key) return false;
+  const loadStores = async (key = adminKey, { silent = false } = {}) => {
+    if (!key || storeRequestInProgress.current) return false;
+    storeRequestInProgress.current = true;
 
-    setLoading(true);
-    setMessage("");
+    if (!silent) {
+      setLoading(true);
+      setMessage("");
+    }
     try {
       const response = await PlatformAdminService.listStores(key);
       sessionStorage.setItem(ADMIN_KEY_STORAGE, key);
@@ -33,14 +38,17 @@ const SupportAdminComponent = () => {
         sessionStorage.removeItem(ADMIN_KEY_STORAGE);
         setAdminKey("");
       }
-      setMessage(
-        error.response?.data?.message ||
-          error.response?.data ||
-          "後台資料載入失敗"
-      );
+      if (!silent || error.response?.status === 401) {
+        setMessage(
+          error.response?.data?.message ||
+            error.response?.data ||
+            "後台資料載入失敗"
+        );
+      }
       return false;
     } finally {
-      setLoading(false);
+      storeRequestInProgress.current = false;
+      if (!silent) setLoading(false);
     }
   };
 
@@ -49,6 +57,29 @@ const SupportAdminComponent = () => {
     // Restore and verify the saved key once when this page opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!adminKey) return undefined;
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        loadStores(adminKey, { silent: true });
+      }
+    };
+
+    const intervalId = window.setInterval(
+      refreshWhenVisible,
+      STORE_REFRESH_INTERVAL_MS
+    );
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+    // The interval is intentionally recreated only when the active key changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminKey]);
 
   const unlock = async (event) => {
     event.preventDefault();
@@ -152,11 +183,7 @@ const SupportAdminComponent = () => {
         </nav>
 
         {activeSection === "stores" ? (
-          <StoreDirectorySection
-            storeData={storeData}
-            loading={loading}
-            onRefresh={() => loadStores(adminKey)}
-          />
+          <StoreDirectorySection storeData={storeData} loading={loading} />
         ) : (
           <SupportTicketSection adminKey={adminKey} />
         )}
