@@ -106,9 +106,13 @@ body {
   border-radius: 0.75rem;
   color: #0f172a;
   background: #ecfdf5;
-  font-size: clamp(1rem, 4vw, 1.25rem);
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    monospace;
+  font-size: clamp(0.9rem, 2.4vw, 1.05rem);
   font-weight: 800;
-  letter-spacing: 0.08em;
+  line-height: 1.55;
+  letter-spacing: 0.04em;
   overflow-wrap: anywhere;
   text-align: center;
 }
@@ -2865,9 +2869,46 @@ textarea.form-control {
   margin: 0;
 }
 
+.profile-settings-card h2 {
+  color: var(--ui-text);
+  font-size: 1.25rem;
+  font-weight: 850;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.profile-settings-card > div > p:not(.ui-eyebrow) {
+  margin-top: 0.35rem;
+  color: var(--ui-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.profile-settings-field {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  color: #334155;
+  font-size: 0.9rem;
+  font-weight: 750;
+}
+
+.profile-settings-card > .btn {
+  width: fit-content;
+  min-width: 9rem;
+}
+
 .profile-settings-card--danger {
   border-color: #fecaca;
   background: #fffafa;
+}
+
+.profile-settings-card--danger .ui-eyebrow {
+  color: var(--ui-danger);
+}
+
+.profile-settings-card--danger h2 {
+  color: #991b1b;
 }
 
 .profile-inline-actions {
@@ -3188,6 +3229,11 @@ textarea.form-control {
 
   .profile-actions {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-settings-card > .btn,
+  .profile-inline-actions .btn {
+    width: 100%;
   }
 
   .auth-entry-page {
@@ -3679,6 +3725,14 @@ textarea.form-control {
 
 .support-ticket__reply p {
   margin-top: 0.25rem;
+}
+
+.support-ticket__reply-time {
+  display: block;
+  margin-top: 0.5rem;
+  color: #5f716f;
+  font-size: 0.75rem;
+  font-weight: 650;
 }
 
 .support-status {

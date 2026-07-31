@@ -188,6 +188,11 @@ const SupportWidgetComponent = ({ currentUser }) => {
                         <div className="support-ticket__reply">
                           <strong>客服回覆</strong>
                           <p>{ticket.adminReply}</p>
+                          {ticket.repliedAt && (
+                            <time className="support-ticket__reply-time">
+                              回覆時間：{formatDate(ticket.repliedAt)}
+                            </time>
+                          )}
                         </div>
                       )}
                     </article>
