@@ -23,6 +23,7 @@ import QrcodeComponent from "./components/qrcode-component";
 import QRLoginComponent from "./components/qrcode-login-component";
 import LinePayComponent from "./components/line-pay-component";
 import ForgotPasswordComponent from "./components/forgot-password-component";
+import SupportAdminComponent from "./components/support-admin-component";
 
 function AppRoutes() {
   const location = useLocation();
@@ -49,6 +50,7 @@ function AppRoutes() {
           element={<AuthInjectedComponent component={LoginComponent} />}
         />
         <Route path="forgot-password" element={<ForgotPasswordComponent />} />
+        <Route path="support-admin" element={<SupportAdminComponent />} />
 
         <Route element={<AuthenticatedRoute />}>
           <Route

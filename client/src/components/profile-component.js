@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 
 import AuthService from "../services/auth.service";
 import { getProductImageUrl } from "../services/product.service";
+import RecoveryCodeActions from "./recovery-code-actions";
+import useRecoveryCodeGuard from "../hooks/use-recovery-code-guard";
 
 const AVATAR_COLORS = [
   "#0f766e",
@@ -39,8 +41,13 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
   const [recoveryPassword, setRecoveryPassword] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [recoveryCodeSaved, setRecoveryCodeSaved] = useState(true);
 
   const isSeller = currentUser?.user?.role === "seller";
+  const hasUnsavedRecoveryCode =
+    Boolean(accountRecoveryCode) && !recoveryCodeSaved;
+
+  useRecoveryCodeGuard(hasUnsavedRecoveryCode);
 
   useEffect(() => {
     if (!isSeller) return;
@@ -54,6 +61,10 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
   }, [isSeller]);
 
   const handleLogout = () => {
+    if (hasUnsavedRecoveryCode) {
+      window.alert("請先複製或下載救援碼，保存完成後才能登出。");
+      return;
+    }
     AuthService.logout();
     setCurrentUser(null);
     navigate("/login", { replace: true });
@@ -112,6 +123,10 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
 
   const handleDeleteAccount = async (event) => {
     event.preventDefault();
+    if (hasUnsavedRecoveryCode) {
+      window.alert("請先複製或下載救援碼，保存完成後才能刪除帳號。");
+      return;
+    }
     if (
       !window.confirm(
         "帳號、菜單、QR Code 與訂單資料都會永久刪除，確定繼續嗎？"
@@ -149,6 +164,7 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
       const response =
         await AuthService.regenerateRecoveryCode(recoveryPassword);
       setAccountRecoveryCode(response.data.recoveryCode);
+      setRecoveryCodeSaved(false);
       setRecoveryPassword("");
       setMessage("新的救援碼已產生，請立即保存");
     } catch (error) {
@@ -359,7 +375,15 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
                 </p>
               </div>
               {accountRecoveryCode && (
-                <code className="recovery-code">{accountRecoveryCode}</code>
+                <>
+                  <code className="recovery-code">{accountRecoveryCode}</code>
+                  <RecoveryCodeActions
+                    code={accountRecoveryCode}
+                    username={username}
+                    saved={recoveryCodeSaved}
+                    onSaved={() => setRecoveryCodeSaved(true)}
+                  />
+                </>
               )}
               <input
                 type="password"
@@ -373,7 +397,7 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
               <button
                 type="button"
                 className="btn btn-outline-primary"
-                disabled={saving || !recoveryPassword}
+                disabled={saving || !recoveryPassword || hasUnsavedRecoveryCode}
                 onClick={handleRegenerateRecoveryCode}
               >
                 {accountRecoveryCode ? "重新產生救援碼" : "產生救援碼"}
