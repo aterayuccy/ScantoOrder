@@ -15,6 +15,10 @@ const {
   getLinePayMode,
   requestLinePay,
 } = require("./line-pay-service");
+const {
+  decryptPaymentCredentials,
+  PaymentCredentialError,
+} = require("./payment-credential-service");
 
 class PaymentError extends Error {
   constructor(message, statusCode = 400) {
@@ -114,6 +118,34 @@ const toPublicPayment = (payment) => ({
 
 const buildOrderId = () =>
   `STO${Date.now()}${crypto.randomBytes(4).toString("hex")}`;
+
+const getSellerPaymentConfiguration = async (sellerId) => {
+  const seller = await User.findOne({ _id: sellerId, role: "seller" })
+    .select(
+      "paymentQrImage linePayMerchantReady linePayConfigured +linePayCredentialsEncrypted"
+    )
+    .lean();
+  if (!seller) throw new PaymentError("找不到店家", 404);
+
+  let linePayCredentials = null;
+  if (seller.linePayMerchantReady && seller.linePayConfigured) {
+    try {
+      linePayCredentials = decryptPaymentCredentials(
+        seller.linePayCredentialsEncrypted
+      );
+    } catch (error) {
+      if (error instanceof PaymentCredentialError) {
+        throw new PaymentError(error.message, 503);
+      }
+      throw error;
+    }
+  }
+
+  return {
+    paymentQrImage: seller.paymentQrImage || "",
+    linePayCredentials,
+  };
+};
 
 const normalizeClientBaseUrl = (origin, environment = process.env) => {
   const candidate =
@@ -226,7 +258,12 @@ const createMockLinePayCheckout = async (payment, clientBaseUrl) => {
   };
 };
 
-const createRealLinePayCheckout = async (payment, items, clientBaseUrl) => {
+const createRealLinePayCheckout = async (
+  payment,
+  items,
+  clientBaseUrl,
+  credentials
+) => {
   const callbackBase = `${clientBaseUrl}/payment/line-pay?orderId=${encodeURIComponent(
     payment.orderId
   )}`;
@@ -236,6 +273,7 @@ const createRealLinePayCheckout = async (payment, items, clientBaseUrl) => {
     items,
     confirmUrl: callbackBase,
     cancelUrl: `${callbackBase}&cancel=1`,
+    credentials,
   });
 
   payment.status = "pending";
@@ -272,13 +310,30 @@ const createCheckout = async ({ user, body, origin }) => {
     throw new PaymentError("LINE Pay 訂單金額至少需要 NT$ 1");
   }
 
+  let sellerPaymentConfiguration = null;
+  if (["merchant_qr", "line_pay"].includes(method)) {
+    sellerPaymentConfiguration = await getSellerPaymentConfiguration(
+      user.qrSeller
+    );
+  }
+
   if (method === "merchant_qr") {
-    const seller = await User.findById(user.qrSeller)
-      .select("paymentQrImage")
-      .lean();
-    if (!seller?.paymentQrImage) {
+    if (!sellerPaymentConfiguration.paymentQrImage) {
       throw new PaymentError("店家尚未設定掃碼收款");
     }
+  }
+
+  const linePayCredentials =
+    method === "line_pay"
+      ? sellerPaymentConfiguration.linePayCredentials
+      : null;
+  const allowDevelopmentMock =
+    method === "line_pay" &&
+    process.env.NODE_ENV !== "production" &&
+    !linePayCredentials &&
+    getLinePayMode() === "mock";
+  if (method === "line_pay" && !linePayCredentials && !allowDevelopmentMock) {
+    throw new PaymentError("店家尚未開通自動 LINE Pay", 409);
   }
 
   const providerMode =
@@ -286,7 +341,9 @@ const createCheckout = async ({ user, body, origin }) => {
       ? "store"
       : method === "merchant_qr"
         ? "merchant_qr"
-        : getLinePayMode();
+        : linePayCredentials
+          ? getLinePayMode(linePayCredentials)
+          : "mock";
   const payment = await Payment.create({
     orderId: buildOrderId(),
     checkoutKey,
@@ -309,7 +366,12 @@ const createCheckout = async ({ user, body, origin }) => {
   if (providerMode === "mock") {
     return createMockLinePayCheckout(payment, clientBaseUrl);
   }
-  return createRealLinePayCheckout(payment, items, clientBaseUrl);
+  return createRealLinePayCheckout(
+    payment,
+    items,
+    clientBaseUrl,
+    linePayCredentials
+  );
 };
 
 const getBuyerPayment = async (user, orderId) => {
@@ -354,7 +416,17 @@ const confirmPayment = async ({ user, body }) => {
     if (!transactionId || transactionId !== payment.providerTransactionId) {
       throw new PaymentError("LINE Pay 交易編號不正確");
     }
-    await confirmLinePay({ transactionId, amount: payment.amount });
+    const { linePayCredentials } = await getSellerPaymentConfiguration(
+      payment.seller
+    );
+    if (!linePayCredentials) {
+      throw new PaymentError("店家的 LINE Pay 串接目前無法使用", 503);
+    }
+    await confirmLinePay({
+      transactionId,
+      amount: payment.amount,
+      credentials: linePayCredentials,
+    });
   }
 
   const order = await submitPendingOrder(

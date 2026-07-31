@@ -19,38 +19,41 @@ const SupportTicketSection = ({ adminKey, onChanged }) => {
   const selectedTicket =
     tickets.find((ticket) => ticket._id === selectedId) || null;
 
-  const loadTickets = useCallback(async ({ background = false } = {}) => {
-    if (requestInProgressRef.current) return;
-    requestInProgressRef.current = true;
+  const loadTickets = useCallback(
+    async ({ background = false } = {}) => {
+      if (requestInProgressRef.current) return;
+      requestInProgressRef.current = true;
 
-    if (!background) {
-      setLoading(true);
-      setMessage("");
-    }
+      if (!background) {
+        setLoading(true);
+        setMessage("");
+      }
 
-    try {
-      const response = await SupportService.listAdminTickets(
-        adminKey,
-        statusFilter
-      );
-      const nextTickets = response.data || [];
-      setTickets(nextTickets);
-      setSelectedId((current) =>
-        nextTickets.some((ticket) => ticket._id === current)
-          ? current
-          : nextTickets[0]?._id || ""
-      );
-    } catch (error) {
-      setMessage(
-        error.response?.data?.message ||
-          error.response?.data ||
-          "客服問題單載入失敗"
-      );
-    } finally {
-      requestInProgressRef.current = false;
-      if (!background) setLoading(false);
-    }
-  }, [adminKey, statusFilter]);
+      try {
+        const response = await SupportService.listAdminTickets(
+          adminKey,
+          statusFilter
+        );
+        const nextTickets = response.data || [];
+        setTickets(nextTickets);
+        setSelectedId((current) =>
+          nextTickets.some((ticket) => ticket._id === current)
+            ? current
+            : nextTickets[0]?._id || ""
+        );
+      } catch (error) {
+        setMessage(
+          error.response?.data?.message ||
+            error.response?.data ||
+            "客服問題單載入失敗"
+        );
+      } finally {
+        requestInProgressRef.current = false;
+        if (!background) setLoading(false);
+      }
+    },
+    [adminKey, statusFilter]
+  );
 
   useEffect(() => {
     loadTickets();

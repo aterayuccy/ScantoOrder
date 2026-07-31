@@ -11,28 +11,34 @@ class LinePayError extends Error {
 const getApiVersion = () =>
   process.env.LINE_PAY_API_VERSION === "v3" ? "v3" : "v4";
 
-const getLinePayMode = () => {
-  if (
-    !process.env.LINE_PAY_CHANNEL_ID ||
-    !process.env.LINE_PAY_CHANNEL_SECRET
-  ) {
+const getLinePayConfiguration = (credentials = {}) => ({
+  channelId: credentials.channelId || process.env.LINE_PAY_CHANNEL_ID || "",
+  channelSecret:
+    credentials.channelSecret || process.env.LINE_PAY_CHANNEL_SECRET || "",
+  environment: credentials.environment || process.env.LINE_PAY_ENV || "sandbox",
+});
+
+const getLinePayMode = (credentials) => {
+  const configuration = getLinePayConfiguration(credentials);
+  if (!configuration.channelId || !configuration.channelSecret) {
     return "mock";
   }
-  return process.env.LINE_PAY_ENV === "production" ? "production" : "sandbox";
+  return configuration.environment === "production" ? "production" : "sandbox";
 };
 
-const getApiBaseUrl = () =>
-  getLinePayMode() === "production"
+const getApiBaseUrl = (credentials) =>
+  getLinePayMode(credentials) === "production"
     ? "https://api-pay.line.me"
     : "https://sandbox-api-pay.line.me";
 
 const parseLinePayJson = (text) =>
   JSON.parse(text.replace(/("transactionId"\s*:\s*)(\d+)/g, '$1"$2"'));
 
-const callLinePay = async (apiPath, body) => {
+const callLinePay = async (apiPath, body, credentials) => {
+  const configuration = getLinePayConfiguration(credentials);
   const requestBody = JSON.stringify(body);
   const nonce = crypto.randomUUID();
-  const secret = process.env.LINE_PAY_CHANNEL_SECRET;
+  const secret = configuration.channelSecret;
   const signature = crypto
     .createHmac("sha256", secret)
     .update(`${secret}${apiPath}${requestBody}${nonce}`)
@@ -40,11 +46,11 @@ const callLinePay = async (apiPath, body) => {
 
   let response;
   try {
-    response = await fetch(`${getApiBaseUrl()}${apiPath}`, {
+    response = await fetch(`${getApiBaseUrl(configuration)}${apiPath}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-LINE-ChannelId": process.env.LINE_PAY_CHANNEL_ID,
+        "X-LINE-ChannelId": configuration.channelId,
         "X-LINE-Authorization-Nonce": nonce,
         "X-LINE-Authorization": signature,
       },
@@ -78,6 +84,7 @@ const requestLinePay = async ({
   items,
   confirmUrl,
   cancelUrl,
+  credentials,
 }) => {
   const apiVersion = getApiVersion();
   const body = {
@@ -102,15 +109,19 @@ const requestLinePay = async ({
       cancelUrl,
     },
   };
-  return callLinePay(`/${apiVersion}/payments/request`, body);
+  return callLinePay(`/${apiVersion}/payments/request`, body, credentials);
 };
 
-const confirmLinePay = async ({ transactionId, amount }) => {
+const confirmLinePay = async ({ transactionId, amount, credentials }) => {
   const apiVersion = getApiVersion();
-  return callLinePay(`/${apiVersion}/payments/${transactionId}/confirm`, {
-    amount,
-    currency: "TWD",
-  });
+  return callLinePay(
+    `/${apiVersion}/payments/${transactionId}/confirm`,
+    {
+      amount,
+      currency: "TWD",
+    },
+    credentials
+  );
 };
 
 module.exports = {

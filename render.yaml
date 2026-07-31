@@ -26,3 +26,5 @@ services:
         value: sandbox
       - key: LINE_PAY_API_VERSION
         value: v4
+      - key: PAYMENT_CREDENTIAL_ENCRYPTION_KEY
+        sync: false

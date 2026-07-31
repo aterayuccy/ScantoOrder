@@ -3,10 +3,7 @@ jest.mock("../models/support-ticket-model", () => ({
 }));
 
 const SupportTicket = require("../models/support-ticket-model");
-const {
-  deleteTicket,
-  updateTicket,
-} = require("../services/support-service");
+const { deleteTicket, updateTicket } = require("../services/support-service");
 
 describe("support ticket replies", () => {
   afterEach(() => {

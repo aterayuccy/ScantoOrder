@@ -70,10 +70,10 @@ const CartComponent = ({ currentUser }) => {
   const [paymentMethod, setPaymentMethod] = useState("store");
   const [invoicePreference, setInvoicePreference] = useState("none");
   const [mobileCarrier, setMobileCarrier] = useState("");
-  const [linePayMode, setLinePayMode] = useState("mock");
   const [storeSettings, setStoreSettings] = useState({
     acceptingOrders: true,
     paymentQrImage: "",
+    linePayAvailable: false,
   });
 
   useEffect(() => {
@@ -109,12 +109,6 @@ const CartComponent = ({ currentUser }) => {
       })
       .finally(() => setLoading(false));
   }, [currentUser]);
-
-  useEffect(() => {
-    PaymentService.getMode()
-      .then((response) => setLinePayMode(response.data.linePayMode))
-      .catch(() => setLinePayMode("mock"));
-  }, []);
 
   const totalAmount = useMemo(
     () =>
@@ -384,26 +378,28 @@ const CartComponent = ({ currentUser }) => {
                     <small>送出訂單後至櫃檯付款</small>
                   </span>
                 </label>
-                {storeSettings.paymentQrImage && (
-                  <label
-                    className={`checkout-choice${
-                      paymentMethod === "merchant_qr" ? " is-selected" : ""
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="merchant_qr"
-                      checked={paymentMethod === "merchant_qr"}
-                      onChange={() => setPaymentMethod("merchant_qr")}
-                    />
-                    <span>
-                      <strong>掃描店家收款碼</strong>
-                      <small>款項直接進入店家帳戶，由店家人工確認</small>
-                    </span>
-                  </label>
-                )}
-                {paymentMethod === "merchant_qr" &&
+                {!storeSettings.linePayAvailable &&
+                  storeSettings.paymentQrImage && (
+                    <label
+                      className={`checkout-choice${
+                        paymentMethod === "merchant_qr" ? " is-selected" : ""
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="merchant_qr"
+                        checked={paymentMethod === "merchant_qr"}
+                        onChange={() => setPaymentMethod("merchant_qr")}
+                      />
+                      <span>
+                        <strong>掃描店家收款碼</strong>
+                        <small>款項直接進入店家帳戶，由店家人工確認</small>
+                      </span>
+                    </label>
+                  )}
+                {!storeSettings.linePayAvailable &&
+                  paymentMethod === "merchant_qr" &&
                   storeSettings.paymentQrImage && (
                     <div className="merchant-qr-payment">
                       <img
@@ -417,31 +413,31 @@ const CartComponent = ({ currentUser }) => {
                       </p>
                     </div>
                   )}
-                <label
-                  className={`checkout-choice${
-                    paymentMethod === "line_pay" ? " is-selected" : ""
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="line_pay"
-                    checked={paymentMethod === "line_pay"}
-                    onChange={() => setPaymentMethod("line_pay")}
-                  />
-                  <span>
-                    <strong>LINE Pay</strong>
-                    <small>前往 LINE Pay 畫面完成付款</small>
-                  </span>
-                </label>
-                {paymentMethod === "line_pay" && (
-                  <p className="checkout-mode-note">
-                    {linePayMode === "mock"
-                      ? "目前為作品展示模式，不會實際扣款。"
-                      : linePayMode === "sandbox"
-                        ? "目前連接 LINE Pay Sandbox，不會實際扣款。"
-                        : "將前往 LINE Pay 完成真實付款。"}
-                  </p>
+                {storeSettings.linePayAvailable && (
+                  <>
+                    <label
+                      className={`checkout-choice${
+                        paymentMethod === "line_pay" ? " is-selected" : ""
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="line_pay"
+                        checked={paymentMethod === "line_pay"}
+                        onChange={() => setPaymentMethod("line_pay")}
+                      />
+                      <span>
+                        <strong>LINE Pay</strong>
+                        <small>前往 LINE Pay 完成付款，系統會自動確認</small>
+                      </span>
+                    </label>
+                    {paymentMethod === "line_pay" && (
+                      <p className="checkout-mode-note">
+                        付款將直接進入此店家的 LINE Pay 合作商店帳戶。
+                      </p>
+                    )}
+                  </>
                 )}
               </fieldset>
 
