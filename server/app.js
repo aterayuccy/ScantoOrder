@@ -38,6 +38,7 @@ const createApp = ({ serveClient = true } = {}) => {
   app.use("/api/product", require("./routes/product-route"));
   app.use("/api/payment", require("./routes/payment-route"));
   app.use("/api/support", require("./routes/support-route"));
+  app.use("/api/admin", require("./routes/platform-admin-route"));
   app.use("/api", notFoundHandler);
 
   if (serveClient) {
