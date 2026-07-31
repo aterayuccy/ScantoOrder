@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import AuthService from "../services/auth.service";
+import RecoveryCodeActions from "./recovery-code-actions";
+import useRecoveryCodeGuard from "../hooks/use-recovery-code-guard";
 
 const ForgotPasswordComponent = () => {
+  const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -11,6 +14,9 @@ const ForgotPasswordComponent = () => {
   const [nextRecoveryCode, setNextRecoveryCode] = useState("");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [recoveryCodeSaved, setRecoveryCodeSaved] = useState(false);
+
+  useRecoveryCodeGuard(Boolean(nextRecoveryCode) && !recoveryCodeSaved);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -29,16 +35,12 @@ const ForgotPasswordComponent = () => {
         newPassword
       );
       setNextRecoveryCode(response.data.recoveryCode);
+      setRecoveryCodeSaved(false);
     } catch (error) {
       setMessage(error.response?.data || "密碼重設失敗");
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const copyRecoveryCode = () => {
-    navigator.clipboard?.writeText(nextRecoveryCode);
-    setMessage("新的救援碼已複製");
   };
 
   return (
@@ -56,16 +58,20 @@ const ForgotPasswordComponent = () => {
             <p>舊救援碼已失效，請立即保存下面的新救援碼。</p>
             <code className="recovery-code">{nextRecoveryCode}</code>
             {message && <div className="alert alert-success">{message}</div>}
+            <RecoveryCodeActions
+              code={nextRecoveryCode}
+              username={username}
+              saved={recoveryCodeSaved}
+              onSaved={() => setRecoveryCodeSaved(true)}
+            />
             <button
               type="button"
-              className="btn btn-outline-primary"
-              onClick={copyRecoveryCode}
+              className="auth-entry-submit btn btn-primary"
+              disabled={!recoveryCodeSaved}
+              onClick={() => navigate("/login")}
             >
-              複製救援碼
-            </button>
-            <Link className="auth-entry-submit btn btn-primary" to="/login">
               返回登入
-            </Link>
+            </button>
           </section>
         ) : (
           <form className="auth-entry-card" onSubmit={submit}>

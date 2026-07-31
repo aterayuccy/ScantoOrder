@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const Payment = require("../models/payment-model");
 const Product = require("../models/product-model");
 const QrCode = require("../models/qr-code-model");
+const SupportTicket = require("../models/support-ticket-model");
 const User = require("../models/user-model");
 const {
   deleteStoredImage,
@@ -104,6 +105,7 @@ const deleteSellerAccount = async ({ sellerId, password }) => {
     Product.deleteMany({ seller: sellerId }),
     Payment.deleteMany({ seller: sellerId }),
     QrCode.deleteMany({ seller: sellerId }),
+    SupportTicket.deleteMany({ seller: sellerId }),
     User.deleteMany({ qrSeller: sellerId, role: "buyer" }),
   ]);
   await seller.deleteOne();

@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AuthService from "../services/auth.service";
+import RecoveryCodeActions from "./recovery-code-actions";
+import useRecoveryCodeGuard from "../hooks/use-recovery-code-guard";
 
 const USERNAME_PATTERN = /^[\p{Script=Han}A-Za-z0-9_]+$/u;
 const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d).*$/;
@@ -13,6 +15,9 @@ const RegisterComponent = ({ setCurrentUser }) => {
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recoveryCode, setRecoveryCode] = useState("");
+  const [recoveryCodeSaved, setRecoveryCodeSaved] = useState(false);
+
+  useRecoveryCodeGuard(Boolean(recoveryCode) && !recoveryCodeSaved);
 
   const validateForm = () => {
     const trimmedUsername = username.normalize("NFKC").trim();
@@ -69,16 +74,12 @@ const RegisterComponent = ({ setCurrentUser }) => {
       }
 
       setRecoveryCode(response.data.recoveryCode);
+      setRecoveryCodeSaved(false);
     } catch (e) {
       setMessage(e.response?.data || "註冊失敗，請稍後再試");
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const copyRecoveryCode = () => {
-    navigator.clipboard?.writeText(recoveryCode);
-    setMessage("救援碼已複製，請妥善保存");
   };
 
   return (
@@ -96,16 +97,16 @@ const RegisterComponent = ({ setCurrentUser }) => {
             <p>這是忘記密碼時唯一可使用的救援碼，只顯示這一次，請立即保存。</p>
             <code className="recovery-code">{recoveryCode}</code>
             {message && <div className="alert alert-success">{message}</div>}
-            <button
-              type="button"
-              className="btn btn-outline-primary"
-              onClick={copyRecoveryCode}
-            >
-              複製救援碼
-            </button>
+            <RecoveryCodeActions
+              code={recoveryCode}
+              username={username}
+              saved={recoveryCodeSaved}
+              onSaved={() => setRecoveryCodeSaved(true)}
+            />
             <button
               type="button"
               className="auth-entry-submit btn btn-primary"
+              disabled={!recoveryCodeSaved}
               onClick={() => navigate("/login")}
             >
               前往登入
