@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 import { formatDate } from "./admin-formatters";
 
-const StoreDirectorySection = ({ storeData, loading, onRefresh }) => {
+const StoreDirectorySection = ({ storeData, loading }) => {
   const [query, setQuery] = useState("");
   const stores = storeData.stores;
   const normalizedQuery = query.normalize("NFKC").trim().toLocaleLowerCase();
@@ -27,14 +27,6 @@ const StoreDirectorySection = ({ storeData, loading, onRefresh }) => {
           <h2 id="stores-title">已註冊店家</h2>
           <p>只列出店家身分帳號，不包含掃描 QR Code 產生的臨時顧客。</p>
         </div>
-        <button
-          type="button"
-          className="btn btn-outline-primary"
-          onClick={onRefresh}
-          disabled={loading}
-        >
-          {loading ? "更新中…" : "更新名單"}
-        </button>
       </div>
 
       <article className="platform-store-total">
