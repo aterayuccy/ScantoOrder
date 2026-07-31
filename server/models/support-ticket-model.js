@@ -4,6 +4,7 @@ const { Schema } = mongoose;
 
 const SUPPORT_CATEGORIES = ["technical", "operation", "suggestion", "other"];
 const SUPPORT_STATUSES = ["open", "answered", "closed"];
+const SELLER_FEEDBACK_OPTIONS = ["", "resolved", "unresolved"];
 
 const supportTicketSchema = new Schema(
   {
@@ -51,6 +52,15 @@ const supportTicketSchema = new Schema(
       type: Date,
       default: null,
     },
+    sellerFeedback: {
+      type: String,
+      enum: SELLER_FEEDBACK_OPTIONS,
+      default: "",
+    },
+    sellerFeedbackAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -64,5 +74,6 @@ const SupportTicket = mongoose.model("SupportTicket", supportTicketSchema);
 
 SupportTicket.SUPPORT_CATEGORIES = SUPPORT_CATEGORIES;
 SupportTicket.SUPPORT_STATUSES = SUPPORT_STATUSES;
+SupportTicket.SELLER_FEEDBACK_OPTIONS = SELLER_FEEDBACK_OPTIONS;
 
 module.exports = SupportTicket;

@@ -358,7 +358,7 @@ const SellerOrderComponent = ({ currentUser }) => {
           <strong>
             NT$ {Number(dailyStats.orderAmount || 0).toLocaleString("zh-TW")}
           </strong>
-          <small>包含店內付款、收款碼與 LINE Pay</small>
+          <small>包含店內付款與 LINE Pay</small>
         </article>
         <article>
           <span>已完成</span>

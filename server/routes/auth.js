@@ -14,7 +14,6 @@ const {
   registerSchema,
   resetPasswordSchema,
 } = require("../validators/auth-validator");
-const { uploadProductImage } = require("../services/product-image-service");
 
 router.get("/testAPI", (req, res) => res.send("成功連結 auth route"));
 
@@ -60,7 +59,6 @@ router.patch(
   "/settings",
   authenticate,
   sellerOnly,
-  uploadProductImage,
   authController.updateSettings
 );
 router.get("/store/:sellerId", authenticate, authController.getStore);

@@ -122,7 +122,7 @@ const buildOrderId = () =>
 const getSellerPaymentConfiguration = async (sellerId) => {
   const seller = await User.findOne({ _id: sellerId, role: "seller" })
     .select(
-      "paymentQrImage linePayMerchantReady linePayConfigured +linePayCredentialsEncrypted"
+      "linePayMerchantReady linePayConfigured +linePayCredentialsEncrypted"
     )
     .lean();
   if (!seller) throw new PaymentError("找不到店家", 404);
@@ -141,10 +141,7 @@ const getSellerPaymentConfiguration = async (sellerId) => {
     }
   }
 
-  return {
-    paymentQrImage: seller.paymentQrImage || "",
-    linePayCredentials,
-  };
+  return { linePayCredentials };
 };
 
 const normalizeClientBaseUrl = (origin, environment = process.env) => {
@@ -230,20 +227,6 @@ const createStoreCheckout = async (payment, user, checkoutToken) => {
   };
 };
 
-const createMerchantQrCheckout = async (payment, user, checkoutToken) => {
-  const order = await submitPendingOrder(user, checkoutToken);
-  payment.status = "awaiting_confirmation";
-  payment.orderBatchId = order.orderBatchId;
-  payment.submittedAt = order.submittedAt;
-  await payment.save();
-
-  return {
-    message: "訂單已送出，等待店家確認掃碼付款",
-    payment: toPublicPayment(payment),
-    ...order,
-  };
-};
-
 const createMockLinePayCheckout = async (payment, clientBaseUrl) => {
   payment.status = "pending";
   payment.providerPaymentUrl = `${clientBaseUrl}/payment/line-pay?orderId=${encodeURIComponent(
@@ -292,9 +275,7 @@ const createRealLinePayCheckout = async (
 
 const createCheckout = async ({ user, body, origin }) => {
   const checkoutToken = normalizeCheckoutToken(body.checkoutToken);
-  const method = ["line_pay", "merchant_qr"].includes(body.method)
-    ? body.method
-    : "store";
+  const method = body.method === "line_pay" ? "line_pay" : "store";
   const invoice = normalizeInvoicePreference(body);
   const checkoutKey = buildOrderBatchId(user._id, checkoutToken);
   const existingPayment = await Payment.findOne({ checkoutKey });
@@ -311,16 +292,10 @@ const createCheckout = async ({ user, body, origin }) => {
   }
 
   let sellerPaymentConfiguration = null;
-  if (["merchant_qr", "line_pay"].includes(method)) {
+  if (method === "line_pay") {
     sellerPaymentConfiguration = await getSellerPaymentConfiguration(
       user.qrSeller
     );
-  }
-
-  if (method === "merchant_qr") {
-    if (!sellerPaymentConfiguration.paymentQrImage) {
-      throw new PaymentError("店家尚未設定掃碼收款");
-    }
   }
 
   const linePayCredentials =
@@ -339,11 +314,9 @@ const createCheckout = async ({ user, body, origin }) => {
   const providerMode =
     method === "store"
       ? "store"
-      : method === "merchant_qr"
-        ? "merchant_qr"
-        : linePayCredentials
-          ? getLinePayMode(linePayCredentials)
-          : "mock";
+      : linePayCredentials
+        ? getLinePayMode(linePayCredentials)
+        : "mock";
   const payment = await Payment.create({
     orderId: buildOrderId(),
     checkoutKey,
@@ -359,9 +332,6 @@ const createCheckout = async ({ user, body, origin }) => {
 
   if (method === "store") {
     return createStoreCheckout(payment, user, checkoutToken);
-  }
-  if (method === "merchant_qr") {
-    return createMerchantQrCheckout(payment, user, checkoutToken);
   }
   if (providerMode === "mock") {
     return createMockLinePayCheckout(payment, clientBaseUrl);

@@ -33,6 +33,7 @@ const SupportWidgetComponent = ({ currentUser }) => {
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [busyTicketId, setBusyTicketId] = useState("");
 
   useEffect(() => {
     if (!open) return undefined;
@@ -119,6 +120,60 @@ const SupportWidgetComponent = ({ currentUser }) => {
     }
   };
 
+  const answerTicketFeedback = async (ticketId, answer) => {
+    setBusyTicketId(ticketId);
+    setFeedback("");
+    try {
+      const response = await SupportService.updateSellerTicketFeedback(
+        currentUser,
+        ticketId,
+        answer
+      );
+      setTickets((current) =>
+        current.map((ticket) =>
+          ticket._id === ticketId ? response.data : ticket
+        )
+      );
+      setFeedback(
+        answer === "resolved"
+          ? "謝謝你的回饋，問題單已結案。"
+          : "已通知客服問題仍未解決，問題單會重新列為待回覆。"
+      );
+    } catch (error) {
+      setFeedback(
+        error.response?.data?.message ||
+          error.response?.data ||
+          "回饋送出失敗，請稍後再試"
+      );
+    } finally {
+      setBusyTicketId("");
+    }
+  };
+
+  const deleteTicket = async (ticketId) => {
+    if (!window.confirm("確定要刪除這張問題單嗎？刪除後無法復原。")) {
+      return;
+    }
+
+    setBusyTicketId(ticketId);
+    setFeedback("");
+    try {
+      await SupportService.deleteSellerTicket(currentUser, ticketId);
+      setTickets((current) =>
+        current.filter((ticket) => ticket._id !== ticketId)
+      );
+      setFeedback("問題單已刪除。");
+    } catch (error) {
+      setFeedback(
+        error.response?.data?.message ||
+          error.response?.data ||
+          "問題單刪除失敗，請稍後再試"
+      );
+    } finally {
+      setBusyTicketId("");
+    }
+  };
+
   return (
     <>
       {open && (
@@ -198,6 +253,16 @@ const SupportWidgetComponent = ({ currentUser }) => {
                 <div className="support-ticket-list">
                   {tickets.map((ticket) => (
                     <article className="support-ticket" key={ticket._id}>
+                      <button
+                        type="button"
+                        className="support-ticket__delete"
+                        aria-label="刪除問題單"
+                        title="刪除問題單"
+                        disabled={busyTicketId === ticket._id}
+                        onClick={() => deleteTicket(ticket._id)}
+                      >
+                        ×
+                      </button>
                       <div className="support-ticket__meta">
                         <strong>{CATEGORY_LABELS[ticket.category]}</strong>
                         <span
@@ -218,6 +283,41 @@ const SupportWidgetComponent = ({ currentUser }) => {
                             </time>
                           )}
                         </div>
+                      )}
+                      {ticket.adminReply && !ticket.sellerFeedback && (
+                        <div className="support-ticket__feedback">
+                          <strong>這次回覆是否解決你的問題？</strong>
+                          <div className="support-ticket__feedback-actions">
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              disabled={busyTicketId === ticket._id}
+                              onClick={() =>
+                                answerTicketFeedback(ticket._id, "resolved")
+                              }
+                            >
+                              問題已解決
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-outline-secondary"
+                              disabled={busyTicketId === ticket._id}
+                              onClick={() =>
+                                answerTicketFeedback(ticket._id, "unresolved")
+                              }
+                            >
+                              仍未解決
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      {ticket.sellerFeedback && (
+                        <p className="support-ticket__feedback-result">
+                          你的回饋：
+                          {ticket.sellerFeedback === "resolved"
+                            ? "問題已解決"
+                            : "仍未解決，已重新通知客服"}
+                        </p>
                       )}
                     </article>
                   ))}

@@ -199,34 +199,24 @@ class AuthService {
 
   updateSellerSettings({
     acceptingOrders,
-    paymentQrImage,
-    removePaymentQr = false,
     linePayMerchantReady,
     linePayChannelId,
     linePayChannelSecret,
   }) {
-    const formData = new FormData();
-    if (typeof acceptingOrders === "boolean") {
-      formData.append("acceptingOrders", String(acceptingOrders));
-    }
-    if (paymentQrImage) formData.append("image", paymentQrImage);
-    if (removePaymentQr) formData.append("removePaymentQr", "true");
-    if (typeof linePayMerchantReady === "boolean") {
-      formData.append("linePayMerchantReady", String(linePayMerchantReady));
-    }
-    if (linePayChannelId) {
-      formData.append("linePayChannelId", linePayChannelId);
-    }
-    if (linePayChannelSecret) {
-      formData.append("linePayChannelSecret", linePayChannelSecret);
-    }
-
-    return axios.patch(API_URL + "/settings", formData, {
-      headers: {
-        Authorization: "jwt " + getSellerToken(),
-        "Content-Type": "multipart/form-data",
+    return axios.patch(
+      API_URL + "/settings",
+      {
+        acceptingOrders,
+        linePayMerchantReady,
+        linePayChannelId,
+        linePayChannelSecret,
       },
-    });
+      {
+        headers: {
+          Authorization: "jwt " + getSellerToken(),
+        },
+      }
+    );
   }
 
   getCurrentUser() {

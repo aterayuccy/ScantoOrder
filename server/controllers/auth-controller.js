@@ -12,7 +12,6 @@ const {
   updateSellerSettings,
 } = require("../services/account-service");
 const { sameId } = require("../middlewares/authorization");
-const { removeUploadedFile } = require("../services/product-image-service");
 const {
   AUTH_VERSION,
   signUserToken,
@@ -151,18 +150,15 @@ const updateSettings = async (req, res, next) => {
       await updateSellerSettings({
         sellerId: req.user._id,
         acceptingOrders: parseBoolean(req.body.acceptingOrders, undefined),
-        removePaymentQr: parseBoolean(req.body.removePaymentQr, false),
         linePayMerchantReady: parseBoolean(
           req.body.linePayMerchantReady,
           undefined
         ),
         linePayChannelId: req.body.linePayChannelId,
         linePayChannelSecret: req.body.linePayChannelSecret,
-        file: req.file,
       })
     );
   } catch (error) {
-    await removeUploadedFile(req.file);
     return next(error);
   }
 };

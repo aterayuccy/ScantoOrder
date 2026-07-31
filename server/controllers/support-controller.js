@@ -33,6 +33,33 @@ const listAdminTickets = async (req, res, next) => {
   }
 };
 
+const respondToTicket = async (req, res, next) => {
+  try {
+    return res.send(
+      await supportService.respondToTicket({
+        ticketId: req.params.ticketId,
+        sellerId: req.user._id,
+        feedback: req.validatedBody.feedback,
+      })
+    );
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const deleteSellerTicket = async (req, res, next) => {
+  try {
+    return res.send(
+      await supportService.deleteSellerTicket({
+        ticketId: req.params.ticketId,
+        sellerId: req.user._id,
+      })
+    );
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const updateTicket = async (req, res, next) => {
   try {
     return res.send(
@@ -60,8 +87,10 @@ const deleteTicket = async (req, res, next) => {
 
 module.exports = {
   createTicket,
+  deleteSellerTicket,
   deleteTicket,
   listAdminTickets,
   listSellerTickets,
+  respondToTicket,
   updateTicket,
 };

@@ -108,12 +108,6 @@ const ProductOptionsEditor = ({
     });
   };
 
-  const confirmStepCount = () => {
-    const count = toCount(stepCountDraft, MAX_STEPS);
-    setStepCountDraft(String(count));
-    setStepCount(count);
-  };
-
   const updateStep = (groupIndex, patch) => {
     updateGroups((current) =>
       current.map((group, index) => {
@@ -180,18 +174,6 @@ const ProductOptionsEditor = ({
     );
   };
 
-  const confirmOptionCount = (groupIndex, groupKey, currentCount) => {
-    const count = toCount(
-      optionCountDrafts[groupKey] ?? currentCount,
-      MAX_OPTIONS_PER_STEP
-    );
-    setOptionCountDrafts((current) => ({
-      ...current,
-      [groupKey]: String(count),
-    }));
-    setOptionCount(groupIndex, count);
-  };
-
   const removeGroup = (groupIndex) => {
     updateGroups((current) =>
       current.filter((_, index) => index !== groupIndex)
@@ -251,29 +233,25 @@ const ProductOptionsEditor = ({
             <label htmlFor={`${idPrefix}-step-count`} style={fieldLabelStyle}>
               步驟數量
             </label>
-            <div className="count-confirm-control">
-              <input
-                id={`${idPrefix}-step-count`}
-                type="number"
-                className="form-control"
-                min="0"
-                max={MAX_STEPS}
-                step="1"
-                inputMode="numeric"
-                value={stepCountDraft}
-                onChange={(event) => setStepCountDraft(event.target.value)}
-              />
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={confirmStepCount}
-              >
-                確認
-              </button>
-            </div>
+            <input
+              id={`${idPrefix}-step-count`}
+              type="number"
+              className="form-control"
+              min="0"
+              max={MAX_STEPS}
+              step="1"
+              inputMode="numeric"
+              value={stepCountDraft}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                setStepCountDraft(nextValue);
+                if (nextValue !== "") setStepCount(nextValue);
+              }}
+              onBlur={() => setStepCountDraft(String(groups.length))}
+            />
           </div>
           <p style={{ ...helperTextStyle, flex: "1 1 16rem" }}>
-            調整數量後按「確認」才會套用。減少時會從最後一個步驟開始移除；設為 0
+            調整後會立即套用。減少時會從最後一個步驟開始移除；設為 0
             時，顧客會直接加入購物車。
           </p>
         </div>
@@ -394,35 +372,34 @@ const ProductOptionsEditor = ({
                   >
                     種類數量
                   </label>
-                  <div className="count-confirm-control">
-                    <input
-                      id={`${groupId}-option-count`}
-                      type="number"
-                      className="form-control"
-                      min="0"
-                      max={MAX_OPTIONS_PER_STEP}
-                      step="1"
-                      inputMode="numeric"
-                      value={
-                        optionCountDrafts[groupKey] ?? String(options.length)
+                  <input
+                    id={`${groupId}-option-count`}
+                    type="number"
+                    className="form-control"
+                    min="0"
+                    max={MAX_OPTIONS_PER_STEP}
+                    step="1"
+                    inputMode="numeric"
+                    value={
+                      optionCountDrafts[groupKey] ?? String(options.length)
+                    }
+                    onChange={(event) => {
+                      const nextValue = event.target.value;
+                      setOptionCountDrafts((current) => ({
+                        ...current,
+                        [groupKey]: nextValue,
+                      }));
+                      if (nextValue !== "") {
+                        setOptionCount(groupIndex, nextValue);
                       }
-                      onChange={(event) =>
-                        setOptionCountDrafts((current) => ({
-                          ...current,
-                          [groupKey]: event.target.value,
-                        }))
-                      }
-                    />
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      onClick={() =>
-                        confirmOptionCount(groupIndex, groupKey, options.length)
-                      }
-                    >
-                      確認
-                    </button>
-                  </div>
+                    }}
+                    onBlur={() =>
+                      setOptionCountDrafts((current) => ({
+                        ...current,
+                        [groupKey]: String(options.length),
+                      }))
+                    }
+                  />
                 </div>
 
                 {options.length === 0 ? (

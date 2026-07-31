@@ -278,6 +278,14 @@ const SupportTicketSection = ({ adminKey, onChanged }) => {
                 {selectedTicket.pagePath && (
                   <small>問題頁面：{selectedTicket.pagePath}</small>
                 )}
+                {selectedTicket.sellerFeedback && (
+                  <small>
+                    店家回饋：
+                    {selectedTicket.sellerFeedback === "resolved"
+                      ? "問題已解決"
+                      : "仍未解決，已重新排入待回覆"}
+                  </small>
+                )}
               </div>
               <label className="support-admin-field">
                 <span>客服回覆</span>

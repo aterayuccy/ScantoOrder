@@ -2,6 +2,7 @@ const Joi = require("joi");
 
 const SUPPORT_CATEGORIES = ["technical", "operation", "suggestion", "other"];
 const SUPPORT_STATUSES = ["open", "answered", "closed"];
+const SELLER_FEEDBACK_OPTIONS = ["resolved", "unresolved"];
 
 const createSupportTicketSchema = Joi.object({
   category: Joi.string()
@@ -31,9 +32,20 @@ const updateSupportTicketSchema = Joi.object({
     "string.max": "回覆內容最多 2000 個字",
   });
 
+const sellerSupportFeedbackSchema = Joi.object({
+  feedback: Joi.string()
+    .valid(...SELLER_FEEDBACK_OPTIONS)
+    .required()
+    .messages({
+      "any.only": "問題單回饋不正確",
+      "any.required": "請選擇問題是否已解決",
+    }),
+});
+
 module.exports = {
   SUPPORT_CATEGORIES,
   SUPPORT_STATUSES,
   createSupportTicketSchema,
+  sellerSupportFeedbackSchema,
   updateSupportTicketSchema,
 };
