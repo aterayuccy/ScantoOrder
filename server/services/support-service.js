@@ -60,9 +60,24 @@ const updateTicket = async ({ ticketId, input }) => {
   return ticket;
 };
 
+const deleteTicket = async ({ ticketId }) => {
+  const ticket = await SupportTicket.findById(ticketId);
+  if (!ticket) throw new SupportError("找不到指定的問題單", 404);
+  if (ticket.status !== "closed") {
+    throw new SupportError("只有已結案的問題單可以刪除", 409);
+  }
+
+  await ticket.deleteOne();
+  return {
+    message: "問題單已刪除",
+    ticketId,
+  };
+};
+
 module.exports = {
   SupportError,
   createTicket,
+  deleteTicket,
   listAdminTickets,
   listSellerTickets,
   updateTicket,

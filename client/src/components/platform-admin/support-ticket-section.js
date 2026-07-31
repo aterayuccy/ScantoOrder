@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import SupportService from "../../services/support.service";
 import { CATEGORY_LABELS, STATUS_LABELS, formatDate } from "./admin-formatters";
+
+const ADMIN_REFRESH_INTERVAL_MS = 10_000;
 
 const SupportTicketSection = ({ adminKey, onChanged }) => {
   const [statusFilter, setStatusFilter] = useState("");
@@ -11,13 +13,21 @@ const SupportTicketSection = ({ adminKey, onChanged }) => {
   const [ticketStatus, setTicketStatus] = useState("open");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const requestInProgressRef = useRef(false);
+  const formTicketIdRef = useRef("");
 
   const selectedTicket =
     tickets.find((ticket) => ticket._id === selectedId) || null;
 
-  const loadTickets = async () => {
-    setLoading(true);
-    setMessage("");
+  const loadTickets = useCallback(async ({ background = false } = {}) => {
+    if (requestInProgressRef.current) return;
+    requestInProgressRef.current = true;
+
+    if (!background) {
+      setLoading(true);
+      setMessage("");
+    }
+
     try {
       const response = await SupportService.listAdminTickets(
         adminKey,
@@ -37,22 +47,42 @@ const SupportTicketSection = ({ adminKey, onChanged }) => {
           "客服問題單載入失敗"
       );
     } finally {
-      setLoading(false);
+      requestInProgressRef.current = false;
+      if (!background) setLoading(false);
     }
-  };
+  }, [adminKey, statusFilter]);
 
   useEffect(() => {
     loadTickets();
-    // The selected filter is the only automatic refresh trigger.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter]);
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        loadTickets({ background: true });
+      }
+    };
+
+    const intervalId = window.setInterval(
+      refreshWhenVisible,
+      ADMIN_REFRESH_INTERVAL_MS
+    );
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [loadTickets]);
 
   useEffect(() => {
     if (!selectedTicket) {
+      formTicketIdRef.current = "";
       setReply("");
       setTicketStatus("open");
       return;
     }
+
+    if (formTicketIdRef.current === selectedTicket._id) return;
+    formTicketIdRef.current = selectedTicket._id;
     setReply(selectedTicket.adminReply || "");
     setTicketStatus(selectedTicket.status);
   }, [selectedTicket]);
@@ -110,6 +140,38 @@ const SupportTicketSection = ({ adminKey, onChanged }) => {
     }
   };
 
+  const deleteClosedTicket = async (ticket) => {
+    if (
+      ticket.status !== "closed" ||
+      !window.confirm(`確定要刪除 ${ticket.username} 的已結案問題單嗎？`)
+    ) {
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+    try {
+      await SupportService.deleteAdminTicket(adminKey, ticket._id);
+      const remainingTickets = tickets.filter(
+        (current) => current._id !== ticket._id
+      );
+      setTickets(remainingTickets);
+      if (selectedId === ticket._id) {
+        setSelectedId(remainingTickets[0]?._id || "");
+      }
+      setMessage("已刪除問題單。");
+      onChanged?.();
+    } catch (error) {
+      setMessage(
+        error.response?.data?.message ||
+          error.response?.data ||
+          "問題單刪除失敗"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <section className="platform-admin-section" aria-labelledby="tickets-title">
       <div className="platform-admin-section__heading">
@@ -150,26 +212,46 @@ const SupportTicketSection = ({ adminKey, onChanged }) => {
         <div className="support-admin-layout">
           <section className="support-admin-list" aria-label="問題單列表">
             {tickets.map((ticket) => (
-              <button
-                type="button"
-                className={`support-admin-ticket${
-                  ticket._id === selectedId ? " is-selected" : ""
+              <div
+                className={`support-admin-ticket-wrap${
+                  ticket.status === "closed"
+                    ? " support-admin-ticket-wrap--closed"
+                    : ""
                 }`}
                 key={ticket._id}
-                onClick={() => setSelectedId(ticket._id)}
               >
-                <span>
-                  <strong>{ticket.username}</strong>
-                  <small>{CATEGORY_LABELS[ticket.category]}</small>
-                </span>
-                <span
-                  className={`support-status support-status--${ticket.status}`}
+                <button
+                  type="button"
+                  className={`support-admin-ticket${
+                    ticket._id === selectedId ? " is-selected" : ""
+                  }`}
+                  onClick={() => setSelectedId(ticket._id)}
                 >
-                  {STATUS_LABELS[ticket.status]}
-                </span>
-                <p>{ticket.message}</p>
-                <time>{formatDate(ticket.createdAt)}</time>
-              </button>
+                  <span>
+                    <strong>{ticket.username}</strong>
+                    <small>{CATEGORY_LABELS[ticket.category]}</small>
+                  </span>
+                  <span
+                    className={`support-status support-status--${ticket.status}`}
+                  >
+                    {STATUS_LABELS[ticket.status]}
+                  </span>
+                  <p>{ticket.message}</p>
+                  <time>{formatDate(ticket.createdAt)}</time>
+                </button>
+                {ticket.status === "closed" && (
+                  <button
+                    type="button"
+                    className="support-admin-ticket-delete"
+                    aria-label={`刪除 ${ticket.username} 的已結案問題單`}
+                    title="刪除已結案問題單"
+                    disabled={loading}
+                    onClick={() => deleteClosedTicket(ticket)}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             ))}
           </section>
 

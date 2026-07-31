@@ -3,7 +3,10 @@ jest.mock("../models/support-ticket-model", () => ({
 }));
 
 const SupportTicket = require("../models/support-ticket-model");
-const { updateTicket } = require("../services/support-service");
+const {
+  deleteTicket,
+  updateTicket,
+} = require("../services/support-service");
 
 describe("support ticket replies", () => {
   afterEach(() => {
@@ -51,5 +54,41 @@ describe("support ticket replies", () => {
     });
 
     expect(ticket.status).toBe("closed");
+  });
+});
+
+describe("support ticket deletion", () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test("deletes a closed ticket", async () => {
+    const ticket = {
+      status: "closed",
+      deleteOne: jest.fn().mockResolvedValue(undefined),
+    };
+    SupportTicket.findById.mockResolvedValue(ticket);
+
+    const result = await deleteTicket({ ticketId: "ticket-3" });
+
+    expect(ticket.deleteOne).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      message: "問題單已刪除",
+      ticketId: "ticket-3",
+    });
+  });
+
+  test("rejects deletion while a ticket is not closed", async () => {
+    const ticket = {
+      status: "answered",
+      deleteOne: jest.fn(),
+    };
+    SupportTicket.findById.mockResolvedValue(ticket);
+
+    await expect(deleteTicket({ ticketId: "ticket-4" })).rejects.toMatchObject({
+      statusCode: 409,
+      publicMessage: "只有已結案的問題單可以刪除",
+    });
+    expect(ticket.deleteOne).not.toHaveBeenCalled();
   });
 });

@@ -16,6 +16,8 @@ const STATUS_LABELS = {
   closed: "已結案",
 };
 
+const SELLER_REFRESH_INTERVAL_MS = 15_000;
+
 const formatDate = (value) =>
   new Intl.DateTimeFormat("zh-TW", {
     dateStyle: "short",
@@ -46,27 +48,49 @@ const SupportWidgetComponent = ({ currentUser }) => {
     if (!open) return;
 
     let active = true;
-    setLoading(true);
-    setFeedback("");
-    SupportService.listSellerTickets(currentUser)
-      .then((response) => {
+    let requestInProgress = false;
+
+    const loadTickets = async ({ initial = false } = {}) => {
+      if (requestInProgress) return;
+      requestInProgress = true;
+
+      if (initial) {
+        setLoading(true);
+        setFeedback("");
+      }
+
+      try {
+        const response = await SupportService.listSellerTickets(currentUser);
         if (active) setTickets(response.data || []);
-      })
-      .catch((error) => {
-        if (active) {
+      } catch (error) {
+        if (active && initial) {
           setFeedback(
             error.response?.data?.message ||
               error.response?.data ||
               "問題單載入失敗"
           );
         }
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+      } finally {
+        requestInProgress = false;
+        if (active && initial) setLoading(false);
+      }
+    };
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") loadTickets();
+    };
+
+    loadTickets({ initial: true });
+    const intervalId = window.setInterval(
+      refreshWhenVisible,
+      SELLER_REFRESH_INTERVAL_MS
+    );
+    document.addEventListener("visibilitychange", refreshWhenVisible);
 
     return () => {
       active = false;
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [currentUser, open]);
 

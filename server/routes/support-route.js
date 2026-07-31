@@ -34,5 +34,10 @@ router.patch(
   validateRequest(updateSupportTicketSchema),
   supportController.updateTicket
 );
+router.delete(
+  "/admin/tickets/:ticketId",
+  supportAdminOnly,
+  supportController.deleteTicket
+);
 
 module.exports = router;
