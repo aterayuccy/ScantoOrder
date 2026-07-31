@@ -3,6 +3,11 @@ import { useNavigate } from "react-router-dom";
 
 import ProductService from "../services/product.service";
 import {
+  SELLER_ONBOARDING_STAGES,
+  setSellerOnboardingStage,
+  useSellerOnboardingStage,
+} from "../onboarding/seller-onboarding";
+import {
   createDefaultOptionGroups,
   createDefaultSpecialRequestConfig,
   validateProductOptions,
@@ -17,6 +22,7 @@ const toMessage = (error, fallback) => {
 
 const PostProductComponent = ({ currentUser }) => {
   const navigate = useNavigate();
+  const onboardingStage = useSellerOnboardingStage(currentUser);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
@@ -55,6 +61,12 @@ const PostProductComponent = ({ currentUser }) => {
         optionGroups,
         specialRequestConfig
       );
+      if (onboardingStage === SELLER_ONBOARDING_STAGES.PRODUCT_FORM) {
+        setSellerOnboardingStage(
+          currentUser.user._id,
+          SELLER_ONBOARDING_STAGES.QR_NAV
+        );
+      }
       window.alert("品項新增成功");
       navigate("/myProduct");
     } catch (error) {
@@ -88,7 +100,14 @@ const PostProductComponent = ({ currentUser }) => {
 
   return (
     <div className="product-form-page">
-      <form className="product-form" onSubmit={postProduct}>
+      <form
+        className={`product-form${
+          onboardingStage === SELLER_ONBOARDING_STAGES.PRODUCT_FORM
+            ? " seller-guide-target seller-guide-form"
+            : ""
+        }`}
+        onSubmit={postProduct}
+      >
         <div className="product-form-heading">
           <div>
             <p className="product-form-eyebrow">菜單管理</p>
@@ -179,6 +198,7 @@ const PostProductComponent = ({ currentUser }) => {
           <button
             type="button"
             className="btn btn-outline-secondary"
+            disabled={onboardingStage === SELLER_ONBOARDING_STAGES.PRODUCT_FORM}
             onClick={() => navigate("/myProduct")}
           >
             取消

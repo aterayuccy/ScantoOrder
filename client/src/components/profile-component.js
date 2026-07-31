@@ -1,7 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import AuthService from "../services/auth.service";
+import {
+  completeSellerOnboarding,
+  SELLER_ONBOARDING_STAGES,
+  useSellerOnboardingStage,
+} from "../onboarding/seller-onboarding";
 import RecoveryCodeActions from "./recovery-code-actions";
 import useRecoveryCodeGuard from "../hooks/use-recovery-code-guard";
 
@@ -27,6 +32,8 @@ const getUsernameInitial = (username = "") =>
 
 const ProfileComponent = ({ currentUser, setCurrentUser }) => {
   const navigate = useNavigate();
+  const onboardingStage = useSellerOnboardingStage(currentUser);
+  const paymentSectionRef = useRef(null);
   const [settings, setSettings] = useState({
     acceptingOrders: true,
     linePayAvailable: false,
@@ -65,6 +72,18 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
       });
   }, [isSeller]);
 
+  useEffect(() => {
+    if (
+      onboardingStage === SELLER_ONBOARDING_STAGES.PAYMENT &&
+      paymentSectionRef.current
+    ) {
+      paymentSectionRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, [onboardingStage]);
+
   const handleLogout = () => {
     if (hasUnsavedRecoveryCode) {
       window.alert("請先複製或下載救援碼，保存完成後才能登出。");
@@ -97,10 +116,12 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
         setLinePayChannelSecret("");
       }
       setMessage(successMessage);
+      return response.data;
     } catch (error) {
       setMessage(
         error.response?.data?.message || error.response?.data || "設定儲存失敗"
       );
+      return null;
     } finally {
       setSaving(false);
     }
@@ -118,12 +139,21 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
       return;
     }
 
-    await saveStoreSettings({
+    const savedSettings = await saveStoreSettings({
       linePayMerchantReady: true,
       linePayChannelId,
       linePayChannelSecret,
       successMessage: "自動 LINE Pay 設定已儲存",
     });
+    if (savedSettings && onboardingStage === SELLER_ONBOARDING_STAGES.PAYMENT) {
+      completeSellerOnboarding(currentUser.user._id);
+      setMessage("自動 LINE Pay 已開啟，店家開通引導完成。");
+    }
+  };
+
+  const finishWithStorePayment = () => {
+    completeSellerOnboarding(currentUser.user._id);
+    setMessage("已先使用店內付款，之後可隨時回來設定 LINE Pay 金鑰。");
   };
 
   const disableLinePay = async () => {
@@ -322,7 +352,14 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
               </button>
             </section>
 
-            <section className="profile-settings-card">
+            <section
+              ref={paymentSectionRef}
+              className={`profile-settings-card${
+                onboardingStage === SELLER_ONBOARDING_STAGES.PAYMENT
+                  ? " seller-guide-target seller-guide-payment"
+                  : ""
+              }`}
+            >
               <div>
                 <p className="ui-eyebrow">付款設定</p>
                 <h2>店家如何收款？</h2>
@@ -405,6 +442,17 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
                     停用自動 LINE Pay
                   </button>
                 )}
+                {onboardingStage === SELLER_ONBOARDING_STAGES.PAYMENT &&
+                  !settings.linePayConfigured && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      disabled={saving}
+                      onClick={finishWithStorePayment}
+                    >
+                      尚無商家金鑰，先使用店內付款
+                    </button>
+                  )}
               </div>
             </section>
 

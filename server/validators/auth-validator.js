@@ -131,12 +131,35 @@ const qrLoginSchema = Joi.object({
 });
 
 const qrCodeCountSchema = Joi.object({
-  count: Joi.number().integer().min(1).max(100).required().messages({
+  mode: Joi.string()
+    .valid("sequential", "specific")
+    .default("sequential")
+    .messages({
+      "any.only": "請選擇正確的桌號新增方式",
+    }),
+  count: Joi.when("mode", {
+    is: "sequential",
+    then: Joi.number().integer().min(1).max(100).required(),
+    otherwise: Joi.forbidden(),
+  }).messages({
     "number.base": "請輸入正確的 QR code 生成數量",
     "number.integer": "請輸入正確的 QR code 生成數量",
     "number.min": "請輸入正確的 QR code 生成數量",
     "number.max": "一次最多產生 100 個 QR code",
     "any.required": "請輸入正確的 QR code 生成數量",
+    "any.unknown": "對應新增時不需要輸入新增數量",
+  }),
+  tableNumber: Joi.when("mode", {
+    is: "specific",
+    then: Joi.number().integer().min(1).max(9999).required(),
+    otherwise: Joi.forbidden(),
+  }).messages({
+    "number.base": "請輸入 1～9999 的桌號",
+    "number.integer": "桌號必須是整數",
+    "number.min": "桌號必須從 1 開始",
+    "number.max": "桌號最多為 9999",
+    "any.required": "請輸入要新增的桌號",
+    "any.unknown": "依序新增時不需要指定桌號",
   }),
 });
 

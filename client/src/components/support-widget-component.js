@@ -34,6 +34,9 @@ const SupportWidgetComponent = ({ currentUser }) => {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [busyTicketId, setBusyTicketId] = useState("");
+  const pendingReplyCount = tickets.filter(
+    (ticket) => ticket.adminReply && !ticket.sellerFeedback
+  ).length;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -46,8 +49,6 @@ const SupportWidgetComponent = ({ currentUser }) => {
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
-
     let active = true;
     let requestInProgress = false;
 
@@ -93,7 +94,7 @@ const SupportWidgetComponent = ({ currentUser }) => {
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [currentUser, open]);
+  }, [currentUser]);
 
   const submitTicket = async (event) => {
     event.preventDefault();
@@ -331,11 +332,24 @@ const SupportWidgetComponent = ({ currentUser }) => {
       <button
         type="button"
         className={`support-fab${open ? " is-open" : ""}`}
-        aria-label={open ? "關閉客服" : "聯絡客服"}
+        aria-label={
+          open
+            ? "關閉客服"
+            : pendingReplyCount > 0
+              ? `聯絡客服，有 ${pendingReplyCount} 則新回覆`
+              : "聯絡客服"
+        }
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >
-        +
+        <span className="support-fab__symbol" aria-hidden="true">
+          +
+        </span>
+        {pendingReplyCount > 0 && (
+          <span className="support-fab__badge" aria-hidden="true">
+            {pendingReplyCount > 99 ? "99+" : pendingReplyCount}
+          </span>
+        )}
       </button>
     </>
   );

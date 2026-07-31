@@ -1,6 +1,7 @@
 const {
   changePasswordSchema,
   loginSchema,
+  qrCodeCountSchema,
   qrLoginSchema,
   registerSchema,
   resetPasswordSchema,
@@ -65,6 +66,29 @@ describe("authentication validators", () => {
     });
 
     expect(result.error).toBeUndefined();
+  });
+
+  test("QR creation keeps supporting sequential count requests", () => {
+    const result = qrCodeCountSchema.validate({ count: 2 });
+
+    expect(result.error).toBeUndefined();
+    expect(result.value).toEqual({ mode: "sequential", count: 2 });
+  });
+
+  test("QR creation accepts an exact table number", () => {
+    const result = qrCodeCountSchema.validate({
+      mode: "specific",
+      tableNumber: 3,
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.value).toEqual({ mode: "specific", tableNumber: 3 });
+  });
+
+  test("QR creation rejects an existing mode without its required value", () => {
+    const result = qrCodeCountSchema.validate({ mode: "specific" });
+
+    expect(result.error).toBeDefined();
   });
 
   test("accepts password change with the existing and new password", () => {
