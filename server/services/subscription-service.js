@@ -238,6 +238,14 @@ const rejectRenewal = async ({ sellerId, message, now = new Date() }) => {
   return buildSubscriptionSummary(seller, now);
 };
 
+const suspendSubscription = async ({ sellerId, now = new Date() }) => {
+  const seller = await findSellerSubscriptionDocument(sellerId, now);
+  seller.subscriptionStatus = "suspended";
+  seller.subscriptionReminderHiddenForExpiry = null;
+  await seller.save();
+  return buildSubscriptionSummary(seller, now);
+};
+
 const setRenewalTestWindow = async ({ sellerId, now = new Date() }) => {
   const seller = await findSellerSubscriptionDocument(sellerId, now);
   if (seller.subscriptionStatus === "suspended") {
@@ -285,5 +293,6 @@ module.exports = {
   setRenewalTestWindow,
   setReminderHidden,
   submitRenewalRequest,
+  suspendSubscription,
   SubscriptionError,
 };

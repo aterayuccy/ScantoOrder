@@ -30,5 +30,9 @@ router.post(
   "/stores/:sellerId/subscription/test-window",
   platformAdminController.setStoreRenewalTestWindow
 );
+router.post(
+  "/stores/:sellerId/subscription/suspend",
+  platformAdminController.suspendStore
+);
 
 module.exports = router;

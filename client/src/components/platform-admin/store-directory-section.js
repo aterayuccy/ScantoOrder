@@ -109,6 +109,30 @@ const StoreDirectorySection = ({ adminKey, storeData, loading, onReload }) => {
     }
   };
 
+  const suspendStore = async (store) => {
+    if (
+      !window.confirm(
+        `確定要暫停 ${store.username} 嗎？暫停後店家功能會停用，但仍可登入並申請續費。`
+      )
+    ) {
+      return;
+    }
+
+    setBusyStoreId(store.id);
+    setMessage("");
+    try {
+      await PlatformAdminService.suspendStore(adminKey, store.id);
+      setMessage(`${store.username} 已暫停使用。`);
+      await onReload();
+    } catch (error) {
+      setMessage(
+        error.response?.data?.message || error.response?.data || "帳號暫停失敗"
+      );
+    } finally {
+      setBusyStoreId("");
+    }
+  };
+
   return (
     <section className="platform-admin-section" aria-labelledby="stores-title">
       <div className="platform-admin-section__heading">
@@ -254,6 +278,16 @@ const StoreDirectorySection = ({ adminKey, storeData, loading, onReload }) => {
                         >
                           測試最後 7 天
                         </button>
+                        {store.subscription?.status !== "suspended" && (
+                          <button
+                            type="button"
+                            className="btn btn-outline-danger"
+                            disabled={busyStoreId === store.id}
+                            onClick={() => suspendStore(store)}
+                          >
+                            暫停使用
+                          </button>
+                        )}
                       </div>
                     )}
                   </td>

@@ -59,6 +59,14 @@ class PlatformAdminService {
       { headers: adminHeaders(adminKey) }
     );
   }
+
+  suspendStore(adminKey, sellerId) {
+    return axios.post(
+      `${API_URL}/stores/${encodeURIComponent(sellerId)}/subscription/suspend`,
+      {},
+      { headers: adminHeaders(adminKey) }
+    );
+  }
 }
 
 const platformAdminService = new PlatformAdminService();
