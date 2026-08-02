@@ -70,6 +70,18 @@ const setStoreRenewalTestWindow = async (req, res, next) => {
   }
 };
 
+const restoreStoreRenewalTestWindow = async (req, res, next) => {
+  try {
+    return res.send({
+      subscription: await platformAdminService.restoreRenewalTestWindow({
+        sellerId: req.params.sellerId,
+      }),
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const suspendStore = async (req, res, next) => {
   try {
     return res.send({
@@ -87,6 +99,7 @@ module.exports = {
   getPaymentSettings,
   listStores,
   rejectStoreRenewal,
+  restoreStoreRenewalTestWindow,
   setStoreRenewalTestWindow,
   suspendStore,
   updatePaymentSettings,

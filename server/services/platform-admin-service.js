@@ -11,6 +11,7 @@ const {
   confirmRenewal,
   ensureSellerSubscriptionDocument,
   rejectRenewal,
+  restoreRenewalTestWindow,
   setRenewalTestWindow,
   suspendSubscription,
 } = require("./subscription-service");
@@ -36,7 +37,7 @@ const listStores = async ({ query = "" } = {}) => {
     User.countDocuments(filter),
     User.find(filter)
       .select(
-        "_id username role createdAt subscriptionStatus subscriptionStartedAt serviceExpiresAt renewalRequestStatus renewalRequestedAt renewalTransferAt renewalAccountLastFive renewalNote renewalReviewMessage lastSubscriptionPaymentAt lastSubscriptionPaymentConfirmedAt subscriptionReminderHiddenForExpiry"
+        "_id username role createdAt subscriptionStatus subscriptionStartedAt serviceExpiresAt subscriptionTestOriginalExpiresAt subscriptionTestOriginalStatus renewalRequestStatus renewalRequestedAt renewalTransferAt renewalAccountLastFive renewalNote renewalReviewMessage lastSubscriptionPaymentAt lastSubscriptionPaymentConfirmedAt subscriptionReminderHiddenForExpiry"
       )
       .sort({ createdAt: -1 })
       .limit(STORE_LIST_LIMIT)
@@ -133,6 +134,7 @@ module.exports = {
   confirmRenewal,
   getPaymentSettings,
   rejectRenewal,
+  restoreRenewalTestWindow,
   setRenewalTestWindow,
   suspendSubscription,
   STORE_LIST_LIMIT,

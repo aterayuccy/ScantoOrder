@@ -109,6 +109,35 @@ const StoreDirectorySection = ({ adminKey, storeData, loading, onReload }) => {
     }
   };
 
+  const restoreRenewalTestWindow = async (store) => {
+    if (
+      !window.confirm(
+        `確定要將 ${store.username} 恢復為測試前的到期日嗎？測試期間建立的續費申請會一併清除。`
+      )
+    ) {
+      return;
+    }
+
+    setBusyStoreId(store.id);
+    setMessage("");
+    try {
+      await PlatformAdminService.restoreStoreRenewalTestWindow(
+        adminKey,
+        store.id
+      );
+      setMessage(`${store.username} 已恢復原到期日。`);
+      await onReload();
+    } catch (error) {
+      setMessage(
+        error.response?.data?.message ||
+          error.response?.data ||
+          "原到期日恢復失敗"
+      );
+    } finally {
+      setBusyStoreId("");
+    }
+  };
+
   const suspendStore = async (store) => {
     if (
       !window.confirm(
@@ -260,6 +289,16 @@ const StoreDirectorySection = ({ adminKey, storeData, loading, onReload }) => {
                         >
                           查無款項
                         </button>
+                        {store.subscription?.testWindowActive && (
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary"
+                            disabled={busyStoreId === store.id}
+                            onClick={() => restoreRenewalTestWindow(store)}
+                          >
+                            恢復原到期日
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <div className="platform-store-actions">
@@ -270,14 +309,25 @@ const StoreDirectorySection = ({ adminKey, storeData, loading, onReload }) => {
                               ? "等待店家選擇續費"
                               : "無需操作"}
                         </span>
-                        <button
-                          type="button"
-                          className="btn btn-outline-secondary"
-                          disabled={busyStoreId === store.id}
-                          onClick={() => setRenewalTestWindow(store)}
-                        >
-                          測試最後 7 天
-                        </button>
+                        {store.subscription?.testWindowActive ? (
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary"
+                            disabled={busyStoreId === store.id}
+                            onClick={() => restoreRenewalTestWindow(store)}
+                          >
+                            恢復原到期日
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary"
+                            disabled={busyStoreId === store.id}
+                            onClick={() => setRenewalTestWindow(store)}
+                          >
+                            測試最後 7 天
+                          </button>
+                        )}
                         {store.subscription?.status !== "suspended" && (
                           <button
                             type="button"

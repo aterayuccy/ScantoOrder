@@ -12,6 +12,8 @@ const toPublicUser = (user) => {
   delete publicUser.recoveryCodeHash;
   delete publicUser.recoveryCodeCreatedAt;
   delete publicUser.paymentQrImagePublicId;
+  delete publicUser.subscriptionTestOriginalExpiresAt;
+  delete publicUser.subscriptionTestOriginalStatus;
   delete publicUser.subscriptionReminderHiddenForExpiry;
   delete publicUser.renewalRequestStatus;
   delete publicUser.renewalRequestedAt;

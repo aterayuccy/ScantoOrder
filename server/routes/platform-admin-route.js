@@ -31,6 +31,10 @@ router.post(
   platformAdminController.setStoreRenewalTestWindow
 );
 router.post(
+  "/stores/:sellerId/subscription/test-window/restore",
+  platformAdminController.restoreStoreRenewalTestWindow
+);
+router.post(
   "/stores/:sellerId/subscription/suspend",
   platformAdminController.suspendStore
 );

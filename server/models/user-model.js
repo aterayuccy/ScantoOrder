@@ -60,6 +60,15 @@ const userSchema = new Schema(
       default: undefined,
       index: true,
     },
+    subscriptionTestOriginalExpiresAt: {
+      type: Date,
+      default: null,
+    },
+    subscriptionTestOriginalStatus: {
+      type: String,
+      enum: ["trial", "paid", "suspended"],
+      default: null,
+    },
     subscriptionReminderHiddenForExpiry: {
       type: Date,
       default: null,

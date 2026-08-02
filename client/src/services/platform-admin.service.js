@@ -60,6 +60,14 @@ class PlatformAdminService {
     );
   }
 
+  restoreStoreRenewalTestWindow(adminKey, sellerId) {
+    return axios.post(
+      `${API_URL}/stores/${encodeURIComponent(sellerId)}/subscription/test-window/restore`,
+      {},
+      { headers: adminHeaders(adminKey) }
+    );
+  }
+
   suspendStore(adminKey, sellerId) {
     return axios.post(
       `${API_URL}/stores/${encodeURIComponent(sellerId)}/subscription/suspend`,
