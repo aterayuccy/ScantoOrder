@@ -2,6 +2,10 @@ const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 
 const User = require("../models/user-model");
+const {
+  createInitialSubscriptionFields,
+  ensureSellerSubscriptionDocument,
+} = require("./subscription-service");
 const { normalizeUsername } = require("./username-service");
 
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync(
@@ -39,13 +43,15 @@ const registerSeller = async ({ username, password }) => {
   }
 
   try {
+    const now = new Date();
     const recoveryCode = generateRecoveryCode();
     const user = await User.create({
       username: normalizedUsername,
       password,
       role: "seller",
+      ...createInitialSubscriptionFields(now),
       recoveryCodeHash: await hashRecoveryCode(recoveryCode),
-      recoveryCodeCreatedAt: new Date(),
+      recoveryCodeCreatedAt: now,
     });
     return { user, recoveryCode };
   } catch (error) {
@@ -135,7 +141,7 @@ const verifySellerCredentials = async ({ username, password }) => {
 
   const passwordMatches = await bcrypt.compare(password, user.password);
   if (!passwordMatches || user.role !== "seller") return null;
-  return user;
+  return ensureSellerSubscriptionDocument(user);
 };
 
 module.exports = {

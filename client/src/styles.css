@@ -2994,6 +2994,130 @@ textarea.form-control {
   gap: 0.75rem;
 }
 
+.subscription-card__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.subscription-status {
+  display: inline-flex;
+  width: fit-content;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0.32rem 0.68rem;
+  border-radius: 999px;
+  color: #075985;
+  background: #e0f2fe;
+  font-size: 0.78rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.subscription-status--paid {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.subscription-status--suspended {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.subscription-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin: 0;
+}
+
+.subscription-details > div {
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 0.75rem;
+  background: #f8fafc;
+}
+
+.subscription-details dt {
+  color: var(--ui-muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.subscription-details dd {
+  margin: 0.2rem 0 0;
+  color: var(--ui-text);
+  font-size: 0.94rem;
+  font-weight: 820;
+}
+
+.subscription-inline-alert {
+  margin: 0;
+}
+
+.subscription-renew-button {
+  width: fit-content;
+}
+
+.subscription-renewal-panel,
+.platform-payment-settings {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border: 1px solid #99d5cf;
+  border-radius: 0.85rem;
+  background: #f6fffd;
+}
+
+.subscription-renewal-panel h3,
+.subscription-renewal-panel p {
+  margin: 0;
+}
+
+.subscription-renewal-panel h3 {
+  color: var(--ui-text);
+  font-size: 1rem;
+  font-weight: 850;
+}
+
+.subscription-renewal-panel > div:first-child p {
+  margin-top: 0.25rem;
+  color: var(--ui-muted);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.subscription-payment-qr,
+.platform-payment-qr-preview {
+  display: block;
+  width: min(100%, 18rem);
+  max-height: 22rem;
+  margin: 0 auto;
+  object-fit: contain;
+  border: 1px solid var(--ui-border);
+  border-radius: 0.8rem;
+  background: #ffffff;
+}
+
+.subscription-payment-missing {
+  padding: 0.9rem;
+  border: 1px dashed #f59e0b;
+  border-radius: 0.75rem;
+  color: #92400e;
+  background: #fffbeb;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.subscription-payee,
+.subscription-payment-note {
+  color: #475569;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
 .auth-entry-page {
   background:
     radial-gradient(
@@ -3713,6 +3837,55 @@ textarea.form-control {
   overflow-y: auto;
 }
 
+.support-system-notice {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  border: 1px solid #fcd34d;
+  border-radius: 0.8rem;
+  background: #fffbeb;
+}
+
+.support-system-notice strong {
+  color: #78350f;
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.support-system-notice p {
+  margin: 0.3rem 0 0;
+  color: #92400e;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.support-system-notice__hide,
+.support-system-notice-toggle {
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  color: var(--ui-primary-dark);
+  background: transparent;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.support-system-notice__hide:hover,
+.support-system-notice__hide:focus-visible,
+.support-system-notice-toggle:hover,
+.support-system-notice-toggle:focus-visible {
+  color: var(--ui-primary);
+  text-decoration: underline;
+}
+
+.support-system-notice-toggle {
+  padding: 0.65rem 0.8rem;
+  border: 1px dashed #99d5cf;
+  border-radius: 0.7rem;
+  background: var(--ui-primary-soft);
+}
+
 .support-form {
   display: grid;
   gap: 0.8rem;
@@ -4070,7 +4243,7 @@ textarea.form-control {
 }
 
 .platform-store-table td:first-child {
-  width: 55%;
+  min-width: 10rem;
 }
 
 .platform-store-table tbody tr:last-child td {
@@ -4090,6 +4263,58 @@ textarea.form-control {
   margin: 0;
   color: var(--ui-muted);
   font-size: 0.8rem;
+}
+
+.platform-store-subtext {
+  display: block;
+  margin-top: 0.28rem;
+  color: var(--ui-muted);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.platform-store-actions {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 8.5rem;
+}
+
+.platform-store-actions .btn {
+  padding: 0.55rem 0.65rem;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.platform-payment-settings {
+  width: min(100%, 42rem);
+  border-color: var(--ui-border);
+  background: #ffffff;
+  box-shadow: var(--ui-shadow);
+}
+
+.platform-payment-fee-input {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.platform-payment-fee-input input {
+  width: min(100%, 12rem);
+}
+
+.platform-payment-fee-input > span {
+  color: var(--ui-muted);
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+.platform-payment-settings textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.platform-payment-settings > .btn {
+  width: fit-content;
 }
 
 .support-admin-toolbar label {
@@ -4298,6 +4523,14 @@ textarea.form-control {
 
   .support-admin-toolbar label {
     width: 100%;
+  }
+
+  .subscription-card__heading {
+    flex-direction: column;
+  }
+
+  .subscription-details {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

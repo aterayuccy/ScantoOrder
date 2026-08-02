@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import SupportService from "../services/support.service";
+import AuthService from "../services/auth.service";
 
 const CATEGORY_LABELS = {
   technical: "系統異常",
@@ -24,12 +25,13 @@ const formatDate = (value) =>
     timeStyle: "short",
   }).format(new Date(value));
 
-const SupportWidgetComponent = ({ currentUser }) => {
+const SupportWidgetComponent = ({ currentUser, setCurrentUser }) => {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState("operation");
   const [message, setMessage] = useState("");
   const [tickets, setTickets] = useState([]);
+  const [subscription, setSubscription] = useState(null);
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -37,6 +39,9 @@ const SupportWidgetComponent = ({ currentUser }) => {
   const pendingReplyCount = tickets.filter(
     (ticket) => ticket.adminReply && !ticket.sellerFeedback
   ).length;
+  const visibleSystemNotice =
+    subscription?.reminder?.active && !subscription.reminder.hidden;
+  const notificationCount = pendingReplyCount + (visibleSystemNotice ? 1 : 0);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -62,8 +67,31 @@ const SupportWidgetComponent = ({ currentUser }) => {
       }
 
       try {
-        const response = await SupportService.listSellerTickets(currentUser);
-        if (active) setTickets(response.data || []);
+        const [ticketResponse, subscriptionResponse] = await Promise.all([
+          SupportService.listSellerTickets(currentUser),
+          SupportService.getSellerSubscription(currentUser),
+        ]);
+        if (active) {
+          setTickets(ticketResponse.data || []);
+          const nextSubscription =
+            subscriptionResponse.data?.subscription || null;
+          setSubscription(nextSubscription);
+          if (
+            nextSubscription?.status &&
+            currentUser?.user?.subscriptionStatus !== nextSubscription.status
+          ) {
+            const nextUser = {
+              ...currentUser,
+              user: {
+                ...currentUser.user,
+                subscriptionStatus: nextSubscription.status,
+                serviceExpiresAt: nextSubscription.expiresAt,
+              },
+            };
+            AuthService.setLocalUser(nextUser);
+            setCurrentUser(nextUser);
+          }
+        }
       } catch (error) {
         if (active && initial) {
           setFeedback(
@@ -94,7 +122,24 @@ const SupportWidgetComponent = ({ currentUser }) => {
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [currentUser]);
+  }, [currentUser, setCurrentUser]);
+
+  const toggleSystemNotice = async (hidden) => {
+    setFeedback("");
+    try {
+      const response = await SupportService.setSubscriptionReminderHidden(
+        currentUser,
+        hidden
+      );
+      setSubscription(response.data?.subscription || null);
+    } catch (error) {
+      setFeedback(
+        error.response?.data?.message ||
+          error.response?.data ||
+          "系統通知設定失敗"
+      );
+    }
+  };
 
   const submitTicket = async (event) => {
     event.preventDefault();
@@ -200,6 +245,31 @@ const SupportWidgetComponent = ({ currentUser }) => {
           </header>
 
           <div className="support-panel__body">
+            {subscription?.reminder?.active &&
+              (subscription.reminder.hidden ? (
+                <button
+                  type="button"
+                  className="support-system-notice-toggle"
+                  onClick={() => toggleSystemNotice(false)}
+                >
+                  顯示系統通知
+                </button>
+              ) : (
+                <section className="support-system-notice">
+                  <div>
+                    <strong>使用期限提醒</strong>
+                    <p>{subscription.reminder.message}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="support-system-notice__hide"
+                    onClick={() => toggleSystemNotice(true)}
+                  >
+                    隱藏通知
+                  </button>
+                </section>
+              ))}
+
             <form className="support-form" onSubmit={submitTicket}>
               <label>
                 <span>問題類型</span>
@@ -335,8 +405,8 @@ const SupportWidgetComponent = ({ currentUser }) => {
         aria-label={
           open
             ? "關閉客服"
-            : pendingReplyCount > 0
-              ? `聯絡客服，有 ${pendingReplyCount} 則新回覆`
+            : notificationCount > 0
+              ? `聯絡客服，有 ${notificationCount} 則新通知`
               : "聯絡客服"
         }
         aria-expanded={open}
@@ -345,9 +415,9 @@ const SupportWidgetComponent = ({ currentUser }) => {
         <span className="support-fab__symbol" aria-hidden="true">
           +
         </span>
-        {pendingReplyCount > 0 && (
+        {notificationCount > 0 && (
           <span className="support-fab__badge" aria-hidden="true">
-            {pendingReplyCount > 99 ? "99+" : pendingReplyCount}
+            {notificationCount > 99 ? "99+" : notificationCount}
           </span>
         )}
       </button>

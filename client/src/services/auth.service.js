@@ -185,6 +185,34 @@ class AuthService {
     });
   }
 
+  getSubscription() {
+    return axios.get(API_URL + "/subscription", {
+      headers: {
+        Authorization: "jwt " + getSellerToken(),
+      },
+    });
+  }
+
+  setSubscriptionReminderHidden(hidden) {
+    return axios.patch(
+      API_URL + "/subscription/reminder",
+      { hidden },
+      {
+        headers: {
+          Authorization: "jwt " + getSellerToken(),
+        },
+      }
+    );
+  }
+
+  submitSubscriptionRenewal(input) {
+    return axios.post(API_URL + "/subscription/renewal", input, {
+      headers: {
+        Authorization: "jwt " + getSellerToken(),
+      },
+    });
+  }
+
   getStoreSettings(sellerId, currentUser) {
     return axios.get(API_URL + "/store/" + encodeURIComponent(sellerId), {
       headers: {

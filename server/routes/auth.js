@@ -2,7 +2,9 @@ const router = require("express").Router();
 
 const authController = require("../controllers/auth-controller");
 const qrCodeController = require("../controllers/qr-code-controller");
+const subscriptionController = require("../controllers/subscription-controller");
 const { authenticate, sellerOnly } = require("../middlewares/authorization");
+const { activeStoreOnly } = require("../middlewares/subscription-access");
 const validateRequest = require("../middlewares/validate-request");
 const {
   changePasswordSchema,
@@ -14,6 +16,10 @@ const {
   registerSchema,
   resetPasswordSchema,
 } = require("../validators/auth-validator");
+const {
+  reminderVisibilitySchema,
+  renewalRequestSchema,
+} = require("../validators/subscription-validator");
 
 router.get("/testAPI", (req, res) => res.send("成功連結 auth route"));
 
@@ -63,12 +69,40 @@ router.patch(
 );
 router.get("/store/:sellerId", authenticate, authController.getStore);
 
-router.get("/qr-codes", authenticate, sellerOnly, qrCodeController.listQrCodes);
+router.get(
+  "/subscription",
+  authenticate,
+  sellerOnly,
+  subscriptionController.getSubscription
+);
+router.patch(
+  "/subscription/reminder",
+  authenticate,
+  sellerOnly,
+  validateRequest(reminderVisibilitySchema),
+  subscriptionController.updateReminderVisibility
+);
+router.post(
+  "/subscription/renewal",
+  authenticate,
+  sellerOnly,
+  validateRequest(renewalRequestSchema),
+  subscriptionController.requestRenewal
+);
+
+router.get(
+  "/qr-codes",
+  authenticate,
+  sellerOnly,
+  activeStoreOnly,
+  qrCodeController.listQrCodes
+);
 
 router.post(
   "/create-qr-token",
   authenticate,
   sellerOnly,
+  activeStoreOnly,
   validateRequest(qrCodeCountSchema),
   qrCodeController.createQrCodes
 );
@@ -77,6 +111,7 @@ router.delete(
   "/qr-codes/:qrCodeId",
   authenticate,
   sellerOnly,
+  activeStoreOnly,
   qrCodeController.deleteQrCode
 );
 

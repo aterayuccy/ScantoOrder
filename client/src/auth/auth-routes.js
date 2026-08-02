@@ -42,6 +42,13 @@ export const RoleRoute = ({ role }) => {
     );
   }
 
+  if (
+    role === "seller" &&
+    currentUser.user.subscriptionStatus === "suspended"
+  ) {
+    return <Navigate to="/profile" replace />;
+  }
+
   return <Outlet />;
 };
 

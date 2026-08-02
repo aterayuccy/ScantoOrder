@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import PlatformAdminService from "../services/platform-admin.service";
 import StoreDirectorySection from "./platform-admin/store-directory-section";
+import SubscriptionSettingsSection from "./platform-admin/subscription-settings-section";
 import SupportTicketSection from "./platform-admin/support-ticket-section";
 
 const ADMIN_KEY_STORAGE = "supportAdminKey";
@@ -180,12 +181,29 @@ const SupportAdminComponent = () => {
           >
             客服問題單
           </button>
+          <button
+            type="button"
+            className={activeSection === "billing" ? "is-active" : ""}
+            aria-pressed={activeSection === "billing"}
+            onClick={() => setActiveSection("billing")}
+          >
+            收款設定
+          </button>
         </nav>
 
-        {activeSection === "stores" ? (
-          <StoreDirectorySection storeData={storeData} loading={loading} />
-        ) : (
+        {activeSection === "stores" && (
+          <StoreDirectorySection
+            adminKey={adminKey}
+            storeData={storeData}
+            loading={loading}
+            onReload={() => loadStores(adminKey, { silent: true })}
+          />
+        )}
+        {activeSection === "support" && (
           <SupportTicketSection adminKey={adminKey} />
+        )}
+        {activeSection === "billing" && (
+          <SubscriptionSettingsSection adminKey={adminKey} />
         )}
       </div>
     </main>

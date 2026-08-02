@@ -64,6 +64,8 @@ export const OrderNotificationProvider = ({ children }) => {
   const { currentUser } = useAuth();
   const sellerId =
     currentUser?.user?.role === "seller" ? currentUser.user._id : "";
+  const serviceSuspended =
+    currentUser?.user?.subscriptionStatus === "suspended";
   const preferenceKey = getPreferenceKey(sellerId);
   const [notificationsEnabled, setNotificationsEnabled] = useState(
     () =>
@@ -101,7 +103,7 @@ export const OrderNotificationProvider = ({ children }) => {
   }, [notificationsEnabled, sellerId]);
 
   useEffect(() => {
-    if (!notificationsEnabled || !sellerId) {
+    if (!notificationsEnabled || !sellerId || serviceSuspended) {
       knownPaymentKeysRef.current = new Set();
       hasLoadedPaymentsRef.current = false;
       return undefined;
@@ -142,7 +144,7 @@ export const OrderNotificationProvider = ({ children }) => {
       active = false;
       window.clearInterval(intervalId);
     };
-  }, [notificationsEnabled, sellerId]);
+  }, [notificationsEnabled, sellerId, serviceSuspended]);
 
   const toggleOrderNotifications = async () => {
     if (!preferenceKey) return "";
