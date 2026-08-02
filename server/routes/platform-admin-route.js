@@ -26,5 +26,9 @@ router.post(
   validateRequest(rejectRenewalSchema),
   platformAdminController.rejectStoreRenewal
 );
+router.post(
+  "/stores/:sellerId/subscription/test-window",
+  platformAdminController.setStoreRenewalTestWindow
+);
 
 module.exports = router;

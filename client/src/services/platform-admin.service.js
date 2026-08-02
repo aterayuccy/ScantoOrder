@@ -51,6 +51,14 @@ class PlatformAdminService {
       { headers: adminHeaders(adminKey) }
     );
   }
+
+  setStoreRenewalTestWindow(adminKey, sellerId) {
+    return axios.post(
+      `${API_URL}/stores/${encodeURIComponent(sellerId)}/subscription/test-window`,
+      {},
+      { headers: adminHeaders(adminKey) }
+    );
+  }
 }
 
 const platformAdminService = new PlatformAdminService();

@@ -238,6 +238,25 @@ const rejectRenewal = async ({ sellerId, message, now = new Date() }) => {
   return buildSubscriptionSummary(seller, now);
 };
 
+const setRenewalTestWindow = async ({ sellerId, now = new Date() }) => {
+  const seller = await findSellerSubscriptionDocument(sellerId, now);
+  if (seller.subscriptionStatus === "suspended") {
+    seller.subscriptionStatus = "trial";
+  }
+  seller.serviceExpiresAt = new Date(
+    now.getTime() + RENEWAL_WINDOW_DAYS * DAY_MS
+  );
+  seller.subscriptionReminderHiddenForExpiry = null;
+  seller.renewalRequestStatus = "none";
+  seller.renewalRequestedAt = null;
+  seller.renewalTransferAt = null;
+  seller.renewalAccountLastFive = "";
+  seller.renewalNote = "";
+  seller.renewalReviewMessage = "";
+  await seller.save();
+  return buildSubscriptionSummary(seller, now);
+};
+
 const requireActiveSubscription = async (sellerId, now = new Date()) => {
   const seller = await findSellerSubscriptionDocument(sellerId, now);
   const summary = buildSubscriptionSummary(seller, now);
@@ -263,6 +282,7 @@ module.exports = {
   rejectRenewal,
   requireActiveSubscription,
   RENEWAL_WINDOW_DAYS,
+  setRenewalTestWindow,
   setReminderHidden,
   submitRenewalRequest,
   SubscriptionError,

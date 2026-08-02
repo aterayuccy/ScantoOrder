@@ -11,6 +11,7 @@ const {
   confirmRenewal,
   ensureSellerSubscriptionDocument,
   rejectRenewal,
+  setRenewalTestWindow,
 } = require("./subscription-service");
 
 const STORE_LIST_LIMIT = 200;
@@ -131,6 +132,7 @@ module.exports = {
   confirmRenewal,
   getPaymentSettings,
   rejectRenewal,
+  setRenewalTestWindow,
   STORE_LIST_LIMIT,
   listStores,
   updatePaymentSettings,
