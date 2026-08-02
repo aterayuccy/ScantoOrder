@@ -58,10 +58,49 @@ const rejectStoreRenewal = async (req, res, next) => {
   }
 };
 
+const setStoreRenewalTestWindow = async (req, res, next) => {
+  try {
+    return res.send({
+      subscription: await platformAdminService.setRenewalTestWindow({
+        sellerId: req.params.sellerId,
+      }),
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const restoreStoreRenewalTestWindow = async (req, res, next) => {
+  try {
+    return res.send({
+      subscription: await platformAdminService.restoreRenewalTestWindow({
+        sellerId: req.params.sellerId,
+      }),
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const suspendStore = async (req, res, next) => {
+  try {
+    return res.send({
+      subscription: await platformAdminService.suspendSubscription({
+        sellerId: req.params.sellerId,
+      }),
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   confirmStoreRenewal,
   getPaymentSettings,
   listStores,
   rejectStoreRenewal,
+  restoreStoreRenewalTestWindow,
+  setStoreRenewalTestWindow,
+  suspendStore,
   updatePaymentSettings,
 };

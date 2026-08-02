@@ -52,6 +52,37 @@ const sameInstant = (left, right) =>
     left && right && new Date(left).getTime() === new Date(right).getTime()
   );
 
+const getRenewalTestBackup = (seller) => {
+  if (seller.subscriptionTestOriginalExpiresAt) {
+    return {
+      active: true,
+      expiresAt: new Date(seller.subscriptionTestOriginalExpiresAt),
+      status: seller.subscriptionTestOriginalStatus || "trial",
+    };
+  }
+
+  if (
+    seller.subscriptionStartedAt &&
+    seller.serviceExpiresAt &&
+    !seller.lastSubscriptionPaymentAt &&
+    ["trial", "suspended"].includes(seller.subscriptionStatus)
+  ) {
+    const initialTrialExpiry = addTaipeiCalendarMonths(
+      seller.subscriptionStartedAt,
+      TRIAL_MONTHS
+    );
+    if (!sameInstant(initialTrialExpiry, seller.serviceExpiresAt)) {
+      return {
+        active: true,
+        expiresAt: initialTrialExpiry,
+        status: "trial",
+      };
+    }
+  }
+
+  return { active: false, expiresAt: null, status: null };
+};
+
 const getDaysRemaining = (expiresAt, now = new Date()) => {
   if (!expiresAt || new Date(expiresAt) < now) return 0;
   return Math.max(
@@ -102,6 +133,7 @@ const buildSubscriptionSummary = (seller, now = new Date()) => {
   const reminderHidden =
     inRenewalWindow &&
     sameInstant(seller.subscriptionReminderHiddenForExpiry, expiresAt);
+  const testWindowBackup = getRenewalTestBackup(seller);
 
   return {
     status,
@@ -132,6 +164,8 @@ const buildSubscriptionSummary = (seller, now = new Date()) => {
     },
     lastPaymentAt: seller.lastSubscriptionPaymentAt || null,
     lastPaymentConfirmedAt: seller.lastSubscriptionPaymentConfirmedAt || null,
+    testWindowActive: testWindowBackup.active,
+    testWindowOriginalExpiresAt: testWindowBackup.expiresAt,
   };
 };
 
@@ -238,6 +272,63 @@ const rejectRenewal = async ({ sellerId, message, now = new Date() }) => {
   return buildSubscriptionSummary(seller, now);
 };
 
+const suspendSubscription = async ({ sellerId, now = new Date() }) => {
+  const seller = await findSellerSubscriptionDocument(sellerId, now);
+  seller.subscriptionStatus = "suspended";
+  seller.subscriptionReminderHiddenForExpiry = null;
+  await seller.save();
+  return buildSubscriptionSummary(seller, now);
+};
+
+const setRenewalTestWindow = async ({ sellerId, now = new Date() }) => {
+  const seller = await findSellerSubscriptionDocument(sellerId, now);
+  const existingBackup = getRenewalTestBackup(seller);
+  if (existingBackup.active) {
+    seller.subscriptionTestOriginalExpiresAt = existingBackup.expiresAt;
+    seller.subscriptionTestOriginalStatus = existingBackup.status;
+  } else {
+    seller.subscriptionTestOriginalExpiresAt = seller.serviceExpiresAt;
+    seller.subscriptionTestOriginalStatus = seller.subscriptionStatus;
+  }
+  if (seller.subscriptionStatus === "suspended") {
+    seller.subscriptionStatus = "trial";
+  }
+  seller.serviceExpiresAt = new Date(
+    now.getTime() + RENEWAL_WINDOW_DAYS * DAY_MS
+  );
+  seller.subscriptionReminderHiddenForExpiry = null;
+  seller.renewalRequestStatus = "none";
+  seller.renewalRequestedAt = null;
+  seller.renewalTransferAt = null;
+  seller.renewalAccountLastFive = "";
+  seller.renewalNote = "";
+  seller.renewalReviewMessage = "";
+  await seller.save();
+  return buildSubscriptionSummary(seller, now);
+};
+
+const restoreRenewalTestWindow = async ({ sellerId, now = new Date() }) => {
+  const seller = await findSellerSubscriptionDocument(sellerId, now);
+  const backup = getRenewalTestBackup(seller);
+  if (!backup.active) {
+    throw new SubscriptionError("這家店沒有可恢復的測試期限", 409);
+  }
+
+  seller.serviceExpiresAt = backup.expiresAt;
+  seller.subscriptionStatus = backup.status;
+  seller.subscriptionTestOriginalExpiresAt = null;
+  seller.subscriptionTestOriginalStatus = null;
+  seller.subscriptionReminderHiddenForExpiry = null;
+  seller.renewalRequestStatus = "none";
+  seller.renewalRequestedAt = null;
+  seller.renewalTransferAt = null;
+  seller.renewalAccountLastFive = "";
+  seller.renewalNote = "";
+  seller.renewalReviewMessage = "";
+  await seller.save();
+  return buildSubscriptionSummary(seller, now);
+};
+
 const requireActiveSubscription = async (sellerId, now = new Date()) => {
   const seller = await findSellerSubscriptionDocument(sellerId, now);
   const summary = buildSubscriptionSummary(seller, now);
@@ -263,7 +354,10 @@ module.exports = {
   rejectRenewal,
   requireActiveSubscription,
   RENEWAL_WINDOW_DAYS,
+  restoreRenewalTestWindow,
+  setRenewalTestWindow,
   setReminderHidden,
   submitRenewalRequest,
+  suspendSubscription,
   SubscriptionError,
 };
