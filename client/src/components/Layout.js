@@ -52,7 +52,10 @@ const Layout = () => {
   const navigate = useNavigate();
   const isSupportAdminPage = location.pathname === "/support-admin";
   const onboardingStage = useSellerOnboardingStage(currentUser);
-  const guide = GUIDE_COPY[onboardingStage];
+  const serviceSuspended =
+    currentUser?.user?.role === "seller" &&
+    currentUser.user.subscriptionStatus === "suspended";
+  const guide = serviceSuspended ? undefined : GUIDE_COPY[onboardingStage];
 
   useEffect(() => {
     document.body.classList.toggle("seller-guided-mode", Boolean(guide));
@@ -80,7 +83,10 @@ const Layout = () => {
       )}
       <Outlet />
       {currentUser?.user?.role === "seller" && !isSupportAdminPage && (
-        <SupportWidgetComponent currentUser={currentUser} />
+        <SupportWidgetComponent
+          currentUser={currentUser}
+          setCurrentUser={setCurrentUser}
+        />
       )}
       {guide && (
         <>

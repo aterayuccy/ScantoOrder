@@ -45,6 +45,61 @@ const userSchema = new Schema(
       type: Boolean,
       default: true,
     },
+    subscriptionStatus: {
+      type: String,
+      enum: ["trial", "paid", "suspended"],
+      default: "trial",
+      index: true,
+    },
+    subscriptionStartedAt: {
+      type: Date,
+      default: undefined,
+    },
+    serviceExpiresAt: {
+      type: Date,
+      default: undefined,
+      index: true,
+    },
+    subscriptionReminderHiddenForExpiry: {
+      type: Date,
+      default: null,
+    },
+    renewalRequestStatus: {
+      type: String,
+      enum: ["none", "pending", "rejected"],
+      default: "none",
+    },
+    renewalRequestedAt: {
+      type: Date,
+      default: null,
+    },
+    renewalTransferAt: {
+      type: Date,
+      default: null,
+    },
+    renewalAccountLastFive: {
+      type: String,
+      default: "",
+      maxlength: 5,
+    },
+    renewalNote: {
+      type: String,
+      default: "",
+      maxlength: 200,
+    },
+    renewalReviewMessage: {
+      type: String,
+      default: "",
+      maxlength: 200,
+    },
+    lastSubscriptionPaymentAt: {
+      type: Date,
+      default: null,
+    },
+    lastSubscriptionPaymentConfirmedAt: {
+      type: Date,
+      default: null,
+    },
     paymentQrImage: {
       type: String,
       default: "",

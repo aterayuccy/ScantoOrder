@@ -17,6 +17,40 @@ class PlatformAdminService {
       headers: adminHeaders(adminKey),
     });
   }
+
+  getSubscriptionSettings(adminKey) {
+    return axios.get(`${API_URL}/subscription-settings`, {
+      headers: adminHeaders(adminKey),
+    });
+  }
+
+  updateSubscriptionSettings(adminKey, input) {
+    const formData = new FormData();
+    formData.append("monthlyFee", String(input.monthlyFee));
+    formData.append("payeeName", input.payeeName || "");
+    formData.append("paymentInstructions", input.paymentInstructions || "");
+    if (input.image) formData.append("image", input.image);
+
+    return axios.patch(`${API_URL}/subscription-settings`, formData, {
+      headers: adminHeaders(adminKey),
+    });
+  }
+
+  confirmStoreRenewal(adminKey, sellerId) {
+    return axios.post(
+      `${API_URL}/stores/${encodeURIComponent(sellerId)}/subscription/confirm`,
+      {},
+      { headers: adminHeaders(adminKey) }
+    );
+  }
+
+  rejectStoreRenewal(adminKey, sellerId, message = "") {
+    return axios.post(
+      `${API_URL}/stores/${encodeURIComponent(sellerId)}/subscription/reject`,
+      { message },
+      { headers: adminHeaders(adminKey) }
+    );
+  }
 }
 
 const platformAdminService = new PlatformAdminService();

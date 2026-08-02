@@ -24,6 +24,20 @@ class SupportService {
     });
   }
 
+  getSellerSubscription(currentUser) {
+    return axios.get(`${API_BASE_URL}/api/user/subscription`, {
+      headers: sellerHeaders(currentUser),
+    });
+  }
+
+  setSubscriptionReminderHidden(currentUser, hidden) {
+    return axios.patch(
+      `${API_BASE_URL}/api/user/subscription/reminder`,
+      { hidden },
+      { headers: sellerHeaders(currentUser) }
+    );
+  }
+
   updateSellerTicketFeedback(currentUser, ticketId, feedback) {
     return axios.patch(
       `${API_URL}/tickets/${ticketId}/feedback`,

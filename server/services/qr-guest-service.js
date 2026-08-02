@@ -2,6 +2,7 @@ const crypto = require("crypto");
 
 const QrCode = require("../models/qr-code-model");
 const User = require("../models/user-model");
+const { requireActiveSubscription } = require("./subscription-service");
 
 class QrGuestError extends Error {
   constructor(message, statusCode = 400) {
@@ -34,6 +35,14 @@ const createOrReuseQrGuest = async (
 ) => {
   const record = await QrCode.findOne({ token: qrToken }).exec();
   if (!record) throw new QrGuestError("無效的 QR code");
+  try {
+    await requireActiveSubscription(record.seller, now);
+  } catch (error) {
+    if (error.code === "SUBSCRIPTION_SUSPENDED") {
+      throw new QrGuestError("店家目前暫停提供線上點餐", 403);
+    }
+    throw error;
+  }
 
   const expiresAt = new Date(now.getTime() + getGuestTtlMs(environment));
   const guestSessionKey = buildGuestSessionKey(qrToken, clientSessionId);

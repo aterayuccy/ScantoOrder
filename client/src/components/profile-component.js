@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import AuthService from "../services/auth.service";
+import { getProductImageUrl } from "../services/product.service";
 import {
   completeSellerOnboarding,
   SELLER_ONBOARDING_STAGES,
@@ -30,6 +31,19 @@ const getAvatarColor = (username = "") => {
 const getUsernameInitial = (username = "") =>
   Array.from(username.trim())[0]?.toUpperCase() || "?";
 
+const formatSubscriptionDate = (value) =>
+  value
+    ? new Intl.DateTimeFormat("zh-TW", { dateStyle: "long" }).format(
+        new Date(value)
+      )
+    : "尚未設定";
+
+const getLocalDateTimeInputValue = () => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 16);
+};
+
 const ProfileComponent = ({ currentUser, setCurrentUser }) => {
   const navigate = useNavigate();
   const onboardingStage = useSellerOnboardingStage(currentUser);
@@ -52,6 +66,16 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [recoveryCodeSaved, setRecoveryCodeSaved] = useState(true);
+  const [subscriptionData, setSubscriptionData] = useState({
+    subscription: null,
+    paymentSettings: null,
+  });
+  const [renewalOpen, setRenewalOpen] = useState(false);
+  const [renewalTransferAt, setRenewalTransferAt] = useState(
+    getLocalDateTimeInputValue
+  );
+  const [renewalAccountLastFive, setRenewalAccountLastFive] = useState("");
+  const [renewalNote, setRenewalNote] = useState("");
 
   const isSeller = currentUser?.user?.role === "seller";
   const hasUnsavedRecoveryCode =
@@ -62,15 +86,38 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
   useEffect(() => {
     if (!isSeller) return;
 
-    AuthService.getSellerSettings()
-      .then((response) => {
-        setSettings(response.data);
+    Promise.all([
+      AuthService.getSellerSettings(),
+      AuthService.getSubscription(),
+    ])
+      .then(([settingsResponse, subscriptionResponse]) => {
+        setSettings(settingsResponse.data);
+        setSubscriptionData(subscriptionResponse.data);
+
+        const subscriptionStatus =
+          subscriptionResponse.data?.subscription?.status;
+        if (
+          subscriptionStatus &&
+          currentUser?.user?.subscriptionStatus !== subscriptionStatus
+        ) {
+          const nextUser = {
+            ...currentUser,
+            user: {
+              ...currentUser.user,
+              subscriptionStatus,
+              serviceExpiresAt:
+                subscriptionResponse.data.subscription.expiresAt,
+            },
+          };
+          AuthService.setLocalUser(nextUser);
+          setCurrentUser(nextUser);
+        }
       })
       .catch((error) => {
         console.error(error);
         setMessage("店家設定載入失敗");
       });
-  }, [isSeller]);
+  }, [currentUser, isSeller, setCurrentUser]);
 
   useEffect(() => {
     if (
@@ -251,6 +298,35 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
     }
   };
 
+  const submitRenewal = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    setMessage("");
+    try {
+      const response = await AuthService.submitSubscriptionRenewal({
+        transferAt: new Date(renewalTransferAt).toISOString(),
+        accountLastFive: renewalAccountLastFive,
+        note: renewalNote,
+      });
+      setSubscriptionData((current) => ({
+        ...current,
+        subscription: response.data.subscription,
+      }));
+      setRenewalOpen(false);
+      setRenewalAccountLastFive("");
+      setRenewalNote("");
+      setMessage("續費申請已送出，待平台確認款項後才會延長使用期限。");
+    } catch (error) {
+      setMessage(
+        error.response?.data?.message ||
+          error.response?.data ||
+          "續費申請送出失敗"
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (!currentUser) {
     return (
       <main className="app-page profile-page">
@@ -268,6 +344,11 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
   }
 
   const { username } = currentUser.user;
+  const subscription = subscriptionData.subscription;
+  const subscriptionPayment = subscriptionData.paymentSettings;
+  const renewalPending = subscription?.renewalRequest?.status === "pending";
+  const renewalRejected = subscription?.renewalRequest?.status === "rejected";
+  const serviceSuspended = subscription?.status === "suspended";
 
   return (
     <main className="app-page profile-page">
@@ -308,12 +389,14 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
           </dl>
 
           <div className="profile-actions">
-            <Link
-              className="btn btn-outline-secondary"
-              to={isSeller ? "/myProduct" : "/"}
-            >
-              返回{isSeller ? "餐點管理" : "菜單"}
-            </Link>
+            {!serviceSuspended && (
+              <Link
+                className="btn btn-outline-secondary"
+                to={isSeller ? "/myProduct" : "/"}
+              >
+                返回{isSeller ? "餐點管理" : "菜單"}
+              </Link>
+            )}
             <button
               type="button"
               className="btn btn-outline-danger"
@@ -326,6 +409,175 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
 
         {isSeller && (
           <div className="profile-settings-stack">
+            <section className="profile-settings-card subscription-card">
+              <div className="subscription-card__heading">
+                <div>
+                  <p className="ui-eyebrow">使用模式</p>
+                  <h2>{subscription?.statusLabel || "載入中…"}</h2>
+                  <p>
+                    {serviceSuspended
+                      ? "服務功能目前暫停，完成續費並由平台確認後即可恢復。"
+                      : "到期日前皆可正常使用；進入最後七天時會開放付費續用。"}
+                  </p>
+                </div>
+                {subscription && (
+                  <span
+                    className={`subscription-status subscription-status--${subscription.status}`}
+                  >
+                    {subscription.statusLabel}
+                  </span>
+                )}
+              </div>
+
+              {subscription && (
+                <dl className="subscription-details">
+                  <div>
+                    <dt>開始日期</dt>
+                    <dd>{formatSubscriptionDate(subscription.startedAt)}</dd>
+                  </div>
+                  <div>
+                    <dt>使用期限</dt>
+                    <dd>{formatSubscriptionDate(subscription.expiresAt)}</dd>
+                  </div>
+                  <div>
+                    <dt>剩餘天數</dt>
+                    <dd>
+                      {serviceSuspended
+                        ? "已到期"
+                        : `${subscription.daysRemaining} 天`}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>續費金額</dt>
+                    <dd>每月 {subscriptionPayment?.monthlyFee ?? 299} 元</dd>
+                  </div>
+                </dl>
+              )}
+
+              {renewalPending && (
+                <div className="alert alert-info subscription-inline-alert">
+                  已申報轉帳，正在等待平台人工核帳；確認前不會視為完成續費。
+                </div>
+              )}
+              {renewalRejected && (
+                <div className="alert alert-danger subscription-inline-alert">
+                  {subscription.renewalRequest.reviewMessage ||
+                    "查無款項，請確認後重新提交。"}
+                </div>
+              )}
+
+              {subscription?.canRenew && !renewalPending && (
+                <button
+                  type="button"
+                  className="btn btn-primary subscription-renew-button"
+                  onClick={() => setRenewalOpen((current) => !current)}
+                >
+                  {serviceSuspended ? "付費恢復使用" : "付費續用"}
+                </button>
+              )}
+
+              {renewalOpen && subscription?.canRenew && !renewalPending && (
+                <form
+                  className="subscription-renewal-panel"
+                  onSubmit={submitRenewal}
+                >
+                  <div>
+                    <h3>掃描收款碼完成轉帳</h3>
+                    <p>
+                      請轉帳 {subscriptionPayment?.monthlyFee ?? 299}
+                      元。提交資料後，需等待平台人工查帳並確認。
+                    </p>
+                  </div>
+
+                  {subscriptionPayment?.paymentQrImage ? (
+                    <img
+                      className="subscription-payment-qr"
+                      src={getProductImageUrl(
+                        subscriptionPayment.paymentQrImage
+                      )}
+                      alt="平台續費收款碼"
+                    />
+                  ) : (
+                    <div className="subscription-payment-missing">
+                      平台尚未設定收款碼，請先聯絡客服。
+                    </div>
+                  )}
+
+                  {subscriptionPayment?.payeeName && (
+                    <p className="subscription-payee">
+                      收款人：{subscriptionPayment.payeeName}
+                    </p>
+                  )}
+                  {subscriptionPayment?.paymentInstructions && (
+                    <p className="subscription-payment-note">
+                      {subscriptionPayment.paymentInstructions}
+                    </p>
+                  )}
+
+                  <label className="profile-settings-field">
+                    <span>轉帳時間</span>
+                    <input
+                      type="datetime-local"
+                      className="form-control"
+                      value={renewalTransferAt}
+                      onChange={(event) =>
+                        setRenewalTransferAt(event.target.value)
+                      }
+                      required
+                    />
+                  </label>
+                  <label className="profile-settings-field">
+                    <span>轉帳帳號末五碼</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className="form-control"
+                      value={renewalAccountLastFive}
+                      onChange={(event) =>
+                        setRenewalAccountLastFive(
+                          event.target.value.replace(/\D/g, "").slice(0, 5)
+                        )
+                      }
+                      placeholder="五位數字"
+                      pattern="\d{5}"
+                      maxLength={5}
+                      required
+                    />
+                  </label>
+                  <label className="profile-settings-field">
+                    <span>備註（選填）</span>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={renewalNote}
+                      onChange={(event) => setRenewalNote(event.target.value)}
+                      maxLength={200}
+                    />
+                  </label>
+                  <div className="profile-inline-actions">
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={
+                        saving ||
+                        renewalAccountLastFive.length !== 5 ||
+                        !subscriptionPayment?.paymentQrImage
+                      }
+                    >
+                      我已完成轉帳
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={() => setRenewalOpen(false)}
+                    >
+                      取消
+                    </button>
+                  </div>
+                </form>
+              )}
+            </section>
+
             <section className="profile-settings-card">
               <div>
                 <p className="ui-eyebrow">營業設定</p>
@@ -341,7 +593,7 @@ const ProfileComponent = ({ currentUser, setCurrentUser }) => {
                     ? "btn-outline-danger"
                     : "btn-success"
                 }`}
-                disabled={saving}
+                disabled={saving || serviceSuspended}
                 onClick={() =>
                   saveStoreSettings({
                     acceptingOrders: !settings.acceptingOrders,

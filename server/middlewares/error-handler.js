@@ -24,9 +24,11 @@ const errorHandler = (error, req, res, next) => {
   }
 
   console.error(`${req.method} ${req.originalUrl} error:`, error);
-  return res.status(error.statusCode || 500).send({
+  const response = {
     message: error.publicMessage || "伺服器處理失敗，請稍後再試",
-  });
+  };
+  if (error.code) response.code = error.code;
+  return res.status(error.statusCode || 500).send(response);
 };
 
 module.exports = {
