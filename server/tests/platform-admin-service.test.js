@@ -49,6 +49,7 @@ describe("platform administrator store list", () => {
     expect(User.countDocuments).toHaveBeenCalledWith({ role: "seller" });
     expect(User.find).toHaveBeenCalledWith({ role: "seller" });
     expect(select).toHaveBeenCalledWith(expect.stringContaining("username"));
+    expect(select).toHaveBeenCalledWith(expect.stringContaining("role"));
     expect(result.total).toBe(2);
     expect(result.stores).toHaveLength(2);
     expect(result.stores[0]).toMatchObject({

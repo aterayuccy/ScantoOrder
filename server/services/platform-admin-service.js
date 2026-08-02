@@ -34,7 +34,7 @@ const listStores = async ({ query = "" } = {}) => {
     User.countDocuments(filter),
     User.find(filter)
       .select(
-        "_id username createdAt subscriptionStatus subscriptionStartedAt serviceExpiresAt renewalRequestStatus renewalRequestedAt renewalTransferAt renewalAccountLastFive renewalNote renewalReviewMessage lastSubscriptionPaymentAt lastSubscriptionPaymentConfirmedAt subscriptionReminderHiddenForExpiry"
+        "_id username role createdAt subscriptionStatus subscriptionStartedAt serviceExpiresAt renewalRequestStatus renewalRequestedAt renewalTransferAt renewalAccountLastFive renewalNote renewalReviewMessage lastSubscriptionPaymentAt lastSubscriptionPaymentConfirmedAt subscriptionReminderHiddenForExpiry"
       )
       .sort({ createdAt: -1 })
       .limit(STORE_LIST_LIMIT)
