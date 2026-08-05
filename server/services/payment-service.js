@@ -145,8 +145,17 @@ const getSellerPaymentConfiguration = async (sellerId) => {
 };
 
 const normalizeClientBaseUrl = (origin, environment = process.env) => {
+  const configuredClientUrl = String(environment.CLIENT_BASE_URL || "").trim();
+  const isProduction = environment.NODE_ENV === "production";
+
+  // Payment callbacks must never trust a browser-provided Origin in production.
+  // Otherwise a forged Origin header could make LINE Pay return to an unrelated site.
+  if (isProduction && !configuredClientUrl) {
+    throw new PaymentError("正式環境尚未設定 CLIENT_BASE_URL", 500);
+  }
+
   const candidate =
-    environment.CLIENT_BASE_URL || origin || "http://localhost:3000";
+    configuredClientUrl || origin || "http://localhost:3000";
 
   try {
     const parsed = new URL(candidate);
@@ -160,9 +169,7 @@ const normalizeClientBaseUrl = (origin, environment = process.env) => {
       hostname.endsWith(".local") ||
       isPrivateIpv4;
     const isDevelopmentHttp =
-      environment.NODE_ENV !== "production" &&
-      parsed.protocol === "http:" &&
-      isDevelopmentHost;
+      !isProduction && parsed.protocol === "http:" && isDevelopmentHost;
 
     if (parsed.protocol !== "https:" && !isDevelopmentHttp) {
       throw new Error("insecure client URL");

@@ -12,6 +12,8 @@ services:
         value: production
       - key: NODE_VERSION
         value: 20.19.0
+      - key: CLIENT_BASE_URL
+        value: https://scan-to-order-iu5b.onrender.com
       - key: PASSPORT_SECRET
         generateValue: true
       - key: MONGODB_URI
