@@ -22,6 +22,14 @@ describe("payment callback URL validation", () => {
     ).toThrow(PaymentError);
   });
 
+  test("requires an explicitly configured callback URL in production", () => {
+    expect(() =>
+      normalizeClientBaseUrl("https://attacker.example", {
+        NODE_ENV: "production",
+      })
+    ).toThrow(PaymentError);
+  });
+
   test("prefers the configured client URL over the request origin", () => {
     expect(
       normalizeClientBaseUrl("https://attacker.example", {
