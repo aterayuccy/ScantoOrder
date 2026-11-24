@@ -52,24 +52,6 @@ class SupportService {
     });
   }
 
-  listAdminTickets(adminKey, status = "") {
-    return axios.get(`${API_URL}/admin/tickets`, {
-      headers: { "x-support-admin-key": adminKey },
-      params: status ? { status } : undefined,
-    });
-  }
-
-  updateAdminTicket(adminKey, ticketId, input) {
-    return axios.patch(`${API_URL}/admin/tickets/${ticketId}`, input, {
-      headers: { "x-support-admin-key": adminKey },
-    });
-  }
-
-  deleteAdminTicket(adminKey, ticketId) {
-    return axios.delete(`${API_URL}/admin/tickets/${ticketId}`, {
-      headers: { "x-support-admin-key": adminKey },
-    });
-  }
 }
 
 const supportService = new SupportService();

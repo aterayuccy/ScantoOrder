@@ -21,18 +21,6 @@ const listSellerTickets = async (req, res, next) => {
   }
 };
 
-const listAdminTickets = async (req, res, next) => {
-  try {
-    return res.send(
-      await supportService.listAdminTickets({
-        status: req.query.status || "",
-      })
-    );
-  } catch (error) {
-    return next(error);
-  }
-};
-
 const respondToTicket = async (req, res, next) => {
   try {
     return res.send(
@@ -60,37 +48,9 @@ const deleteSellerTicket = async (req, res, next) => {
   }
 };
 
-const updateTicket = async (req, res, next) => {
-  try {
-    return res.send(
-      await supportService.updateTicket({
-        ticketId: req.params.ticketId,
-        input: req.validatedBody,
-      })
-    );
-  } catch (error) {
-    return next(error);
-  }
-};
-
-const deleteTicket = async (req, res, next) => {
-  try {
-    return res.send(
-      await supportService.deleteTicket({
-        ticketId: req.params.ticketId,
-      })
-    );
-  } catch (error) {
-    return next(error);
-  }
-};
-
 module.exports = {
   createTicket,
   deleteSellerTicket,
-  deleteTicket,
-  listAdminTickets,
   listSellerTickets,
   respondToTicket,
-  updateTicket,
 };

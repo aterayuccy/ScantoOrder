@@ -1,4 +1,3 @@
-const supportAdminOnly = require("../middlewares/support-admin");
 const {
   createSupportTicketSchema,
   sellerSupportFeedbackSchema,
@@ -50,54 +49,5 @@ describe("support validators", () => {
     });
 
     expect(result.error).toBeDefined();
-  });
-});
-
-describe("support administrator authentication", () => {
-  const originalKey = process.env.SUPPORT_ADMIN_KEY;
-
-  afterEach(() => {
-    if (originalKey === undefined) {
-      delete process.env.SUPPORT_ADMIN_KEY;
-    } else {
-      process.env.SUPPORT_ADMIN_KEY = originalKey;
-    }
-  });
-
-  const createResponse = () => {
-    const response = {
-      status: jest.fn(),
-      send: jest.fn(),
-    };
-    response.status.mockReturnValue(response);
-    return response;
-  };
-
-  test("allows the configured support administrator key", () => {
-    process.env.SUPPORT_ADMIN_KEY = "test-support-admin-key-123456";
-    const request = {
-      get: jest.fn().mockReturnValue("test-support-admin-key-123456"),
-    };
-    const response = createResponse();
-    const next = jest.fn();
-
-    supportAdminOnly(request, response, next);
-
-    expect(next).toHaveBeenCalledTimes(1);
-    expect(response.status).not.toHaveBeenCalled();
-  });
-
-  test("rejects an incorrect support administrator key", () => {
-    process.env.SUPPORT_ADMIN_KEY = "test-support-admin-key-123456";
-    const request = {
-      get: jest.fn().mockReturnValue("wrong-key"),
-    };
-    const response = createResponse();
-    const next = jest.fn();
-
-    supportAdminOnly(request, response, next);
-
-    expect(response.status).toHaveBeenCalledWith(401);
-    expect(next).not.toHaveBeenCalled();
   });
 });

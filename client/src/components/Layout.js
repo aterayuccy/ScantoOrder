@@ -50,7 +50,6 @@ const Layout = () => {
   const { currentUser, setCurrentUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const isSupportAdminPage = location.pathname === "/support-admin";
   const onboardingStage = useSellerOnboardingStage(currentUser);
   const serviceSuspended =
     currentUser?.user?.role === "seller" &&
@@ -78,11 +77,11 @@ const Layout = () => {
 
   return (
     <>
-      {currentUser && !isSupportAdminPage && (
+      {currentUser && (
         <Nav currentUser={currentUser} setCurrentUser={setCurrentUser} />
       )}
       <Outlet />
-      {currentUser?.user?.role === "seller" && !isSupportAdminPage && (
+      {currentUser?.user?.role === "seller" && (
         <SupportWidgetComponent
           currentUser={currentUser}
           setCurrentUser={setCurrentUser}
